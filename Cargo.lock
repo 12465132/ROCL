@@ -1326,26 +1326,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "oclt"
-version = "0.1.0"
-dependencies = [
- "clap",
- "colorify",
- "crossbeam",
- "env_logger",
- "error-iter",
- "fastrand",
- "image",
- "log",
- "microbench",
- "ocl",
- "pixels",
- "pollster",
- "winit",
- "winit_input_helper",
-]
-
-[[package]]
 name = "once_cell"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1582,6 +1562,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05aaa8004b64fd573fc9d002f4e632d51ad4f026c2b5ba95fcb6c2f32c2c47d8"
 dependencies = [
  "bytemuck",
+]
+
+[[package]]
+name = "rocl"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "colorify",
+ "crossbeam",
+ "env_logger",
+ "error-iter",
+ "fastrand",
+ "image",
+ "log",
+ "microbench",
+ "ocl",
+ "pixels",
+ "pollster",
+ "winit",
+ "winit_input_helper",
 ]
 
 [[package]]
