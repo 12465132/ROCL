@@ -1,0 +1,26 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"command":"${workspaceFolder}/target/release/${workspaceFolderBasename}.exe",
+			"label": "run oclt pixels"
+		},
+		{
+			"type": "cargo",
+			"command": "run",
+			"args": [
+				"--release",
+				"--",
+				"-X=800",
+				"-Y=625",
+				"pixels"
+			],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build",
+			"label": "rust: cargo build release"
+		}
+	]
+}
