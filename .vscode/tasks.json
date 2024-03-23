@@ -10,7 +10,7 @@
 			"type": "cargo",
 			"command": "run",
 			"args": [
-				"--release",
+				// "--release",
 				"--",
 				"-X=800",
 				"-Y=625",

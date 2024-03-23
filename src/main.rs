@@ -9,22 +9,23 @@
     // use ocl::{ Context, Device,  Image,  Platform, Result as OclResult, SpatialDims,Sampler};
     use ocl::enums::ImageChannelDataType;
     use ocl::enums::ImageChannelOrder;
-    use winit::window::Fullscreen;
+    use ocl::Platform;
+    
 
 
-    use std::time;
-    use std::time::{Duration,  Instant};
+    
+    use std::time::{Instant};
     use ocl::ProQue;
     use std::path::Path;
-    use std::{self, clone, default,};
-    use image::{/* GenericImage, GenericImageView, */ ImageBuffer, open};
+    use std::{self,};
+    use image::{/* GenericImage, GenericImageView, */ ImageBuffer};
     use std::fs;
     use std::fs::File;
     use std::io::Read;
-    use std::env;
-    use std::thread::{self, yield_now};
+    
+    use std::thread::{self};
     use std::path::PathBuf;
-    use std::iter;
+    
     // use iced::{executor, Application, Command, Element, Length};
     // use iced::widget::{ container};
     // use iced::{ Theme};  
@@ -89,7 +90,7 @@
             let world = Arc::new(Mutex::new(MyApp::new(file_path,xtotal,ytotal)));
             let c2 = Arc::clone(&barrier);
 
-            let renderThread = {
+            let _renderThread = {
                 let c1 = Arc::clone(&barrier);
                 let worldt = Arc::clone(&world);
                 thread::spawn(move || {
@@ -104,7 +105,7 @@
             let now_total = Instant::now();
 
             event_loop.run(move |event, _, control_flow| {
-                let now_save = Instant::now();
+                let _now_save = Instant::now();
                 loops +=1;
                 // Draw the current frame
                 if let Event::RedrawRequested(_) = event {
@@ -145,6 +146,7 @@
                     window.request_redraw();
                     // println!("time in millisec: {} ", (now_save.elapsed().as_nanos() as f64)/1000000.);
                     // println!(" fps:{}",1./((now_save.elapsed().as_nanos() as f64)/1000000000.));
+                    println!("total frames:{frames}");
                     println!("frames per second: {}",(frames as f64)/((now_total.elapsed().as_nanos() as f64)/1000000000.));
                     println!("loops per second: {}",(loops as f64)/((now_total.elapsed().as_nanos() as f64)/1000000000.));
                     print!("{esc}c", esc = 27 as char);
@@ -161,9 +163,9 @@
     }
 
 fn eguiframe(
-    file_path:PathBuf,
-    xtotal:usize,
-    ytotal:usize
+    _file_path:PathBuf,
+    _xtotal:usize,
+    _ytotal:usize
 ) {
 }
 struct MyApp {
@@ -190,7 +192,14 @@ impl MyApp {
                     let pro_que = ProQue::builder()
                     .src(src)
                     .dims(dims)
+                    .context(
+                        ocl::Context::builder()
+                        .platform(Platform::default())
+                        .devices(ocl::enums::DeviceSpecifier::First)
+                        .build()
+                        .unwrap())
                     .build().unwrap();
+                // let context = ;
             
                     let src_img = ocl::builders::ImageBuilder::<u8>::new()
                     .dims(pro_que.dims())
@@ -227,8 +236,8 @@ impl MyApp {
         }
         fn render(&mut self){
 
-            let mut xtotal = 1920;
-            let mut ytotal = 1080;
+            let xtotal ;
+            let ytotal ;
             match self.pro_que.dims().clone() {
                 ocl::SpatialDims::Unspecified => return,
                 ocl::SpatialDims::One(_) => return,
@@ -255,15 +264,17 @@ impl MyApp {
             // print!("f");
         }
         /// Update the `World` internal state; bounce the box around the screen.
-        fn update(&mut self) {
-        }
+        // fn update(&mut self) {
+        // }
         
         /// Draw the `World` state to the frame buffer.
         ///
         /// Assumes the default texture format: `wgpu::TextureFormat::Rgba8UnormSrgb`
         fn draw(&mut self, pixels: &mut [u8]) {
             // self.render();
-            pixels.swap_with_slice(&mut (*self.raw_img.clone()))
+            pixels
+            .swap_with_slice(&mut (*self.raw_img.clone()))
+            
         }
 }
 
@@ -276,7 +287,7 @@ fn render_image(
     ytotal:usize
 ) -> ocl::Result<()> {
 
-    if (width==0||height==0||xtotal==0||ytotal==0){return Err("invalid input".into());}
+    if width==0||height==0||xtotal==0||ytotal==0 {return Err("invalid input".into());}
     
     let mut src:String = Default::default();
     File::open(file_path.clone()).expect("file read not work").read_to_string(&mut src).unwrap();
@@ -317,7 +328,7 @@ fn render_image(
 
         let now_vec_buffer_create = Instant::now();
         let mut imagearray: Vec<Vec<ImageBuffer<image::Rgba<u8>, Vec<u8>>>> = vec![vec![image::ImageBuffer::from_pixel((width) as u32, (height) as u32, image::Rgba([0,0,0,0_u8]));ygroups];xgroups];
-        let end_vec_buffer_create = now_vec_buffer_create.elapsed().as_nanos(); 
+        let _end_vec_buffer_create = now_vec_buffer_create.elapsed().as_nanos(); 
 
         let mut sum_load: u128 = 0;
         let mut sum_compute: u128 = 0;
@@ -400,7 +411,7 @@ fn render_image(
 
     });
 
-    let thread_temp_files_clean: thread::JoinHandle<()>;
+    let _thread_temp_files_clean: thread::JoinHandle<()>;
     if 1==0
     {
         let thread_temp_files_clean = thread::spawn(move || {
@@ -475,7 +486,7 @@ fn render_video(
         let mut sum_load: u128 = 0;
         let mut sum_compute: u128 = 0;
         let mut sum_read: u128 = 0;
-        let mut sum_save: u128 = 0;
+        let _sum_save: u128 = 0;
         let mut frames = 0.;
         let now_gpu = Instant::now();
         
@@ -544,7 +555,7 @@ fn img_formats() -> ocl::Result<()> {
             ocl::flags::MEM_READ_WRITE,
             ocl::enums::MemObjectType::Image2d,
         )?;
-        //println!("Image Formats: {:#?}.", sup_img_formats);
+        println!("Image Formats: {:#?}.", sup_img_formats);
     }
 }
 Ok(())
@@ -558,7 +569,7 @@ fn myapprender(
     let mut src:String = Default::default();
     File::open(file_path.clone()).expect("file read not work").read_to_string(&mut src).unwrap();
 
-    let now_cpu = Instant::now();
+    let _now_cpu = Instant::now();
 
     let dims = ocl::SpatialDims::Two(xtotal, ytotal);
 
@@ -568,15 +579,15 @@ fn myapprender(
         .build()
         .unwrap();
 
-        let mut imageout: ImageBuffer<image::Rgba<u8>, Vec<u8>> = image::ImageBuffer::from_pixel(xtotal as u32, ytotal as u32, image::Rgba([0,0,0,0]));
-        let src_img = ocl::builders::ImageBuilder::<u8>::new()
+        let imageout: ImageBuffer<image::Rgba<u8>, Vec<u8>> = image::ImageBuffer::from_pixel(xtotal as u32, ytotal as u32, image::Rgba([0,0,0,0]));
+        let _src_img = ocl::builders::ImageBuilder::<u8>::new()
         .dims(pro_que.dims())
         .context(pro_que.context())
         .copy_host_slice(&imageout)
         .build()
         .unwrap();
     
-        let dst_img = ocl::Image::<u8>::builder()
+        let _dst_img = ocl::Image::<u8>::builder()
         .channel_order(ImageChannelOrder::Rgba)
         .channel_data_type(ImageChannelDataType::UnormInt8)
         .image_type(ocl::enums::MemObjectType::Image2d)
@@ -608,12 +619,12 @@ struct Args {
     #[arg(short='H', long="height", default_value_t = 1080)]
     height:usize,
     /// total pixels in image in the x direction
-    #[arg(short='X', long="xtotal", default_value_t = 1920)]
+    #[arg(short='X', long="xtotal", default_value_t = 600)]
     xtotal:usize,
     /// total pixels in image in the y direction
-    #[arg(short='Y', long="ytotal", default_value_t = 1080)]
+    #[arg(short='Y', long="ytotal", default_value_t = 400)]
     ytotal:usize,
-    #[arg(short='k', long = "kernel_file_path", default_value = "C:\\Users\\srk2687\\project\\oclt\\img_add_kernel.cl")]
+    #[arg(short='k', long = "kernel_file_path", default_value = "C:\\Users\\prithvikharatmol\\source\\repos\\ocl\\ROCL\\src\\img_add_kernel.cl")]
     file_path: PathBuf,
     #[command(subcommand)]
     cmd: Commands
@@ -621,24 +632,24 @@ struct Args {
 
 #[derive(Subcommand, Debug, Clone)]
 enum Commands {
-    imgFormats,
-    imgRender,
-    vidRender,
-    eframe,
-    myApp,
-    pixels
+    ImgFormats,
+    ImgRender,
+    VidRender,
+    Eframe,
+    MyApp,
+    Pixels
 
 }
 
 pub fn main() {
     let args = Args::parse();
     match args.cmd {
-        Commands::imgFormats => img_formats().expect("msg"),
-        Commands::imgRender => render_image(args.file_path,args.width,args.height,args.xtotal,args.ytotal).expect("msg"),
-        Commands::vidRender => render_video(args.file_path,args.xtotal,args.ytotal).expect("msg"),
-        Commands::eframe => eguiframe(args.file_path,args.xtotal,args.ytotal),
-        Commands::myApp => myapprender(args.file_path,args.xtotal,args.ytotal),
-        Commands::pixels => pixels_ez_renderer(args.file_path, args.xtotal, args.ytotal).expect("msg"),
+        Commands::ImgFormats => img_formats().expect("msg"),
+        Commands::ImgRender => render_image(args.file_path,args.width,args.height,args.xtotal,args.ytotal).expect("msg"),
+        Commands::VidRender => render_video(args.file_path,args.xtotal,args.ytotal).expect("msg"),
+        Commands::Eframe => eguiframe(args.file_path,args.xtotal,args.ytotal),
+        Commands::MyApp => myapprender(args.file_path,args.xtotal,args.ytotal),
+        Commands::Pixels => pixels_ez_renderer(args.file_path, args.xtotal, args.ytotal).expect("msg"),
         _ => return,
     }
     
