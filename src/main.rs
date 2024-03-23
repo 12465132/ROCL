@@ -624,7 +624,7 @@ struct Args {
     /// total pixels in image in the y direction
     #[arg(short='Y', long="ytotal", default_value_t = 400)]
     ytotal:usize,
-    #[arg(short='k', long = "kernel_file_path", default_value = "C:\\Users\\prithvikharatmol\\source\\repos\\ocl\\ROCL\\src\\img_add_kernel.cl")]
+    #[arg(short='k', long = "kernel_file_path", default_value = "img_add_kernel.cl")]
     file_path: PathBuf,
     #[command(subcommand)]
     cmd: Commands
