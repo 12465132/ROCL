@@ -8,7 +8,8 @@ pub struct MyApp {
     pub dst_img:ocl::Image<u8>,
     pub src_img1:ocl::Image<u8>,
     pub src_img2:ocl::Image<u8>,
-    pub raw_img:pixels::Pixels
+    pub raw_img:pixels::Pixels,
+    frameintg:i32
 }
 
 impl MyApp {
@@ -99,7 +100,8 @@ impl MyApp {
                         dst_img: dst_img, 
                         src_img1: src_img1, 
                         src_img2: src_img2, 
-                        raw_img: pixels
+                        raw_img: pixels,
+                        frameintg:0
                     }
                 
         }
@@ -120,14 +122,12 @@ impl MyApp {
                 .arg(&self.src_img1)
                 .arg(&self.src_img2)
                 .arg(&self.dst_img)
-                .arg(0)
-                .arg(0)
-                .arg(xtotal as i32) 
-                .arg(ytotal as i32)    
+                .arg(self.frameintg)    
                 .arg((self.time.elapsed().as_nanos() as f32)/1000000000.)             
                 .build().expect("263");
 
             unsafe { kernel.enq().expect("265"); }
+            self.frameintg +=1;
             self
         }
         /// Update the `World` internal state; bounce the box around the screen.
@@ -135,7 +135,10 @@ impl MyApp {
             self.dst_img.read(self.raw_img.frame_mut()).enq().expect("267");
             self 
         }
-        
+        pub fn reset(&mut self) -> &mut Self {
+            self.frameintg = 0;
+            self
+        }
         // Draw the `World` state to the frame buffer.
         //
         // Assumes the default texture format: `wgpu::TextureFormat::Rgba8UnormSrgb`

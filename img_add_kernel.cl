@@ -103,19 +103,17 @@ __kernel void render(
     float loop_time = 10;
     // float time = fmod(t,loop_time); 
     float b = -1;
-    float p = .5;
+    float p = 1;
     float noise = 0;
     float4 pixels = 0;
     noise = clamp(round((.5+half_exp10(b))*hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.01,2))),0.,1.);
-    if(noise>0.){
-    pixels = 
-         p*read_imagef(src_image1, sampler_host,uv)*noise+
-     (1-p)*read_imagef(src_image2, sampler_host,uv);//lastframe
-            
-    }else{
-    pixels = 
-        read_imagef(src_image2, sampler_host,uv);//lastframe
-     }
+    pixels = read_imagef(src_image2, sampler_host,uv);//lastframe
+    if(noise>0. && pixels.x>0.&&pixels.y>0.&&pixels.z>0.){
+    pixels *= (1-p);
+    pixels += read_imagef(src_image1, sampler_host,uv)*noise;
+    }else if(noise>0.){
+    pixels = read_imagef(src_image1, sampler_host,uv)*noise;
+    }
     // pixels = (float4)(pixels.xyz,1.);
     write_imagef(dst_image, coord,pixels);
 }
@@ -156,40 +154,41 @@ __kernel void add(
     read_only image2d_t src_image1,
     read_only image2d_t src_image2,
     write_only image2d_t dst_image,
-    int xgroup,
-    int ygroup,
-    int width,
-    int height,
+    int frameintg,
     float time
 ) 
 {
+    
     int2 coord = (int2)(get_global_id(0),get_global_id(1));
-    float2 uv = (float2)(((float)get_global_id(0)+.001)/(float)(width),((float)get_global_id(1)+.001)/(float)height);
-    float2 i = (float2)(1.00/width,0/height);
-    float2 j = (float2)(0/width,1.00/height);
-    float2 pcoord = (float2)((float)get_global_id(0)+width*xgroup,(float)get_global_id(1)+height*ygroup);
+    float2 uv = (float2)(((float)get_global_id(0)+.001)/(float)(get_global_size(0)),((float)get_global_id(1)+.001)/(float)get_global_size(1));
+    float2 i = (float2)(1.00/get_global_size(0),0/get_global_size(1));
+    float2 j = (float2)(0/get_global_size(0),1.00/get_global_size(1));
     float loop_time = 10;
     // float time = fmod(t,loop_time); 
-    float b = 4.-time*.01;
-    float p = .1;
-    float noise = 0;
-    float4 pixels = 0;
-    noise = clamp(round((.5+half_exp10(b))*hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.01,2))),0.,1.);
+    float b = .25;///increse for stronger gpu
+    float p = 5.;
+    float4 pixel = read_imagef(src_image2, sampler_host,uv);//lastframe
+    float noise = clamp(round((.5+half_exp(3-b*time))*hash11(perlin2d(time+get_group_id(0),time+get_group_id(1),.01,2))),0.,1.);
+    float noisefactor = 1;
     if(noise>0.){
-    pixels = 
-         p*read_imagef(src_image1, sampler_host,uv)*noise+
-     (1-p)*read_imagef(src_image2, sampler_host,uv);//lastframe
-    pixels *= (float4)(
-        hash11(perlin2d(500.+time+get_global_id(0),100.+time+get_global_id(1),.01,2)),
-        hash11(perlin2d(2.00+time+get_global_id(0),2.00+time+get_global_id(1),.01,2)),
-        hash11(perlin2d(2.00+time+get_global_id(1),2.00+time+get_global_id(0),.01,2)),1.);
-    
-    }else{
-    pixels = 
-        read_imagef(src_image2, sampler_host,uv);//lastframe
-     }
-    pixels = (float4)(pixels.xyz,1.);
-    write_imagef(dst_image, coord,pixels);
+    pixel *= frameintg/(frameintg+p);
+    float4 noisyimage = read_imagef(src_image1, sampler_host,uv)
+    +noisefactor*(float4)(
+        (hash11(perlin2d(500.+time+get_global_id(0),100.+time+get_global_id(1),.01,20))-.5),
+        (hash11(perlin2d(2.00+time+get_global_id(0),2.00+time+get_global_id(1),.01,20))-.5),
+        (hash11(perlin2d(2.00+time+get_global_id(1),2.00+time+get_global_id(0),.01,20))-.5),1.
+    );
+    pixel += noisyimage*p/(frameintg+p);
+    }
+    // pixel = read_imagef(src_image1, sampler_host,uv)
+    // +noisefactor*(float4)(
+    //     (hash11(perlin2d(500.+time+get_global_id(0),100.+time+get_global_id(1),.01,20))-.5),
+    //     (hash11(perlin2d(2.00+time+get_global_id(0),2.00+time+get_global_id(1),.01,20))-.5),
+    //     (hash11(perlin2d(2.00+time+get_global_id(1),2.00+time+get_global_id(0),.01,20))-.5),1.
+    // );
+    // pixel = noise;
+    pixel = (float4)(pixel.xyz,1.);
+    write_imagef(dst_image, coord,pixel);
 }////     // pixels = (float4)(pow(cos((sin(time)*100.+pcoord.y)*0.0628318530718),2.),pow(cos((sin(time)*100.+pcoord.x)*0.0628318530718),2.),0.,1.);////  noise = min(1.,round((.5+half_exp10(b))*hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.01,2))));////  if(noise > 0.){////  /// rendering//// //  pixels = read_imagef(src_image1, sampler_host,uv);//image render////     pixels = read_imagef(src_image2, sampler_host,uv);////     // pixels = (float4)(hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.01,20)),hash11(perlin2d(time+get_global_id(1),time+get_global_id(0),.01,20)),hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.02,20)),1.);//// //  pixels = renderimage();//image render//// //  pixels *= (float4)(noise);////  ///rendering//// pixels = ////      p*pixels+////  (1-p)*read_imagef(src_image2, sampler_host,uv);//lastframe////  }else{//// pixels = ////     read_imagef(src_image2, sampler_host,uv);//lastframe////  }//// //  pixels = read_imagef(src_image1, sampler_host,uv);//lastframe//// pixels = (float4)(pixels.xyz,1.);//// // pixels = (float4)(hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.01,20)),hash11(perlin2d(time+get_global_id(1),time+get_global_id(0),.01,20)),hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.02,20)),1.);//// // pixels = (float4)(//// //     min(1.,round((.5+half_exp10(b))*hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.01,2)))),//// //     min(1.,round((.5+half_exp10(b))*hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.01,2)))),//// //     min(1.,round((.5+half_exp10(b))*hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.01,2)))),//// //     1.);
 
 __kernel void sobel_edge(

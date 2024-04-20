@@ -3,6 +3,7 @@ extern crate image;
 extern crate pixels;
 extern crate winit;
 extern crate winit_input_helper;
+extern crate env_logger;
 use crate::myapp;
 
 pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
@@ -49,6 +50,8 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 // let imaget = image.clone();
                 worldt.lock().unwrap().src_img1.write(&image::io::Reader::open("default.jpg".to_string()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
                 worldt.lock().unwrap().src_img2.write(&image::io::Reader::open("default.jpg".to_string()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
+                worldt.lock().unwrap().src_img1.write(&image::io::Reader::open(image.clone()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
+
             loop {
                 // print!("|");
                 // worldt.lock().unwrap().render("add".to_string());
@@ -78,11 +81,9 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 // worldlocked.render("dyn_gauss".to_string()).update();
                 // worldlocked.dst_img.cmd().copy(&worldlocked.src_img2, [0, 0, 0]).enq().unwrap();
                 // worldlocked.render("sharpen".to_string());
-                worldlocked.src_img1.write(&image::io::Reader::open(image.clone()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
+                // worldlocked.src_img1.write(&image::io::Reader::open(image.clone()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
                 // }
                 // worldlocked.src_img1.write(&image::io::Reader::open(image.clone()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
-                // c1.wait();
-            // print!("|");
             }
             })
         };
