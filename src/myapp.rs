@@ -3,7 +3,28 @@ extern crate pixels;
 extern crate std;
 use std::{fs::File, io::Read};
 
-use ocl::OclPrm;
+#[derive(Clone)]
+pub struct L {
+	pub color:[f32;3],	// diffuse color
+	pub reflection:bool,	// has reflection 
+	pub refraction:bool,	// has refraction
+	pub n:f32,			// refraction index
+	pub roughness:f32,	// Cook-Torrance roughness
+	pub fresnel:f32,		// Cook-Torrance fresnel reflectance
+	pub density:f32,		// Cook-Torrance color density i.e. fraction of diffuse reflection
+}
+impl Copy for L {}
+
+#[derive(Clone)]
+pub struct triangle{
+    pub p1:[f32;3],
+    pub p2:[f32;3],    
+    pub p3:[f32;3],  
+    pub R:f32,  
+    pub L:L,
+}
+impl Copy for triangle {}
+
 pub struct MyApp {
     pub pro_que:ocl::ProQue,
     pub time:std::time::Instant,
@@ -15,23 +36,6 @@ pub struct MyApp {
     pub raw_img:pixels::Pixels,
     frameintg:i32
 }
-struct L {
-	color:[f32;3],	// diffuse color
-	reflection:bool,	// has reflection 
-	refraction:bool,	// has refraction
-	n:f32,			// refraction index
-	roughness:f32,	// Cook-Torrance roughness
-	fresnel:f32,		// Cook-Torrance fresnel reflectance
-	density:f32,		// Cook-Torrance color density i.e. fraction of diffuse reflection
-}
-pub struct triangle{
-    pub p1:[f32;3],
-    pub p2:[f32;3],    
-    pub p3:[f32;3],  
-    pub R:f32,  
-    pub L:L,
-}
-
 impl MyApp {
     pub fn new(
     pixels:pixels::Pixels,
@@ -225,13 +229,10 @@ impl MyApp {
         // fn draw(&mut self, pixels: &mut [u8]) {
         //     // self.render();
         //     pixels
-        //     .swap_with_slice(&mut (*self.raw_img.clone()))
-            
-
-
-            
+        //     .swap_with_slice(&mut (*self.raw_img.clone()))  
         // }
 }
+
 //normandy is a place
 //iceland isnt real
 //spain is french

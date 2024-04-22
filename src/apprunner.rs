@@ -4,6 +4,8 @@ extern crate pixels;
 extern crate winit;
 extern crate winit_input_helper;
 extern crate env_logger;
+use std::default;
+
 use crate::myapp;
 
 pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
@@ -40,9 +42,65 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
         let mut frames = 0;
         let mut loops = 0;
         let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
-        let world = std::sync::Arc::new(std::sync::Mutex::new(myapp::MyApp::new(pixels,file_path,image.clone(),xtotal,ytotal,16)));
+        let world = std::sync::Arc::new(std::sync::Mutex::new(myapp::MyApp::new(pixels,file_path,image.clone(),xtotal,ytotal,5)));
         let c2 = std::sync::Arc::clone(&barrier);
-
+        let defaultL = 
+        myapp::L{
+            color:[0.5,0.5,0.5],
+            reflection:true,
+            refraction:false,
+            n:0.,
+            roughness:0.,
+            fresnel:0.,
+            density:0.,
+        };
+        let mut triangles = 
+        vec![
+        myapp::triangle{
+            p1:[10.,0.,-2.],
+            p2:[0.,10.,-2.],    
+            p3:[0.,0.,-2.],  
+            R:0.01,  
+            L:defaultL.clone(),
+        },
+        myapp::triangle{
+            p1:[10.,0.,-2.],
+            p2:[0.,-10.,-2.],    
+            p3:[0.,0.,-2.],  
+            R:0.01,  
+            L:defaultL.clone(),
+        },
+        myapp::triangle{
+            p1:[-10.,0.,-2.],
+            p2:[0.,10.,-2.],    
+            p3:[0.,0.,-2.],  
+            R:0.01,  
+            L:defaultL.clone(),
+        },
+        myapp::triangle{
+            p1:[-10.,0.,-2.],
+            p2:[0.,-10.,-2.],    
+            p3:[0.,0.,-2.],  
+            R:0.01,  
+            L:defaultL.clone(),
+        },
+        myapp::triangle{
+            p1:[1.,1.,-1.],
+            p2:[2.,-2.,-1.],    
+            p3:[3.,2.,1.],  
+            R:0.01,  
+            L:myapp::L { 
+                color: [0.9,0.7,0.3], 
+                reflection: true, 
+                refraction: false, 
+                n: 0., 
+                roughness: 0., 
+                fresnel: 0., 
+                density: 0. 
+            },
+        },
+        ];
+        world.lock().unwrap().loadtriangles(triangles);
         let _render_thread = {
             let c1 = std::sync::Arc::clone(&barrier);
             let worldt = std::sync::Arc::clone(&world);

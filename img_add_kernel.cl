@@ -15,9 +15,10 @@ __constant int hash[] = {208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,25
                      135,176,183,191,253,115,184,21,233,58,129,233,142,39,128,211,118,137,139,255,
                      114,20,218,113,154,27,127,246,250,1,8,198,250,209,92,222,173,21,88,102,219};
 float dot2( float3 v ) { return dot(v,v); }
-// struct L{
-//     float3 color;
-// };
+struct Data{
+float minSDFDist;
+int index;
+};
 struct L {
 	float3  color;		// diffuse color
 	bool reflection;	// has reflection 
@@ -28,6 +29,7 @@ struct L {
 	float density;		// Cook-Torrance color density i.e. fraction of diffuse reflection
 
 };
+
 struct triangle{
     float3 p1;    
     float3 p2;
@@ -146,6 +148,32 @@ float hash11(float q){
 //     float R;
 //     struct L L;    
 // };
+
+genNormal()
+Data SDFGlobal(float3 p, read_only image2d_t triangles){
+    
+}
+vec3 camoffset (vec3 v,vec2 o){
+    return normalize(
+        vec3(v.x,v.y,v.z))+
+        normalize(vec3(-(v.y),(v.x),0.))*
+        o.x+normalize(vec3(-v.z*v.x,-v.z*v.y,v.x*v.x+v.y*v.y))*o.y;
+        }
+Data init(){Data OD;OD.SDFDist = 10000000.,OD.typeindex=-1,OD.index=-1;return OD;}
+struct Camera{vec3 V,C;}C;
+struct Light{vec3 C,S;}L;
+const float 
+distOutFCCAM 		= 40.f,
+GlowValue 			= 1000.,
+Glowscale 			= 5.,
+GlowValue2 			= 100.,
+Glowscale2 			= 1.,
+GlowMult2 			= .0,
+reflection			= .8;
+const int //performace <-> precision
+RenderDistance 		= 100,
+stepcount 			= 70,
+bouncecount 		= 4;
 __kernel void render(
     sampler_t sampler_host,
     read_only image2d_t triangles, //float3 
