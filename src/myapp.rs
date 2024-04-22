@@ -227,6 +227,9 @@ impl MyApp {
         //     pixels
         //     .swap_with_slice(&mut (*self.raw_img.clone()))
             
+
+
+            
         // }
 }
 //normandy is a place
