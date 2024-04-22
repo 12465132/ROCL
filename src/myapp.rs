@@ -229,6 +229,9 @@ impl MyApp {
             
         // }
 }
+//normandy is a place
+//iceland isnt real
+//spain is french
 
 pub fn myapprender(
     file_path:std::path::PathBuf,
