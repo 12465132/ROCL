@@ -1,7 +1,7 @@
 
 
 __constant int SEED = 0;
-
+__constant float ERR =.0000001;
 __constant int hash[] = {208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,254,245,255,247,247,40,
                      185,248,251,245,28,124,204,204,76,36,1,107,28,234,163,202,224,245,128,167,204,
                      9,92,217,54,239,174,173,102,193,189,190,121,100,108,167,44,43,77,180,204,8,81,
@@ -14,6 +14,51 @@ __constant int hash[] = {208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,25
                      101,120,99,3,186,86,99,41,237,203,111,79,220,135,158,42,30,154,120,67,87,167,
                      135,176,183,191,253,115,184,21,233,58,129,233,142,39,128,211,118,137,139,255,
                      114,20,218,113,154,27,127,246,250,1,8,198,250,209,92,222,173,21,88,102,219};
+float dot2( float3 v ) { return dot(v,v); }
+// struct L{
+//     float3 color;
+// };
+struct L {
+	float3  color;		// diffuse color
+	bool reflection;	// has reflection 
+	bool refraction;	// has refraction
+	float n;			// refraction index
+	float roughness;	// Cook-Torrance roughness
+	float fresnel;		// Cook-Torrance fresnel reflectance
+	float density;		// Cook-Torrance color density i.e. fraction of diffuse reflection
+
+};
+struct triangle{
+    float3 p1;    
+    float3 p2;
+    float3 p3;
+    float R;
+    struct L L;    
+};
+float udTriangle( float3 p, struct triangle t )
+{
+  float3 ba = t.p2 - t.p1; 
+  float3 cb = t.p3 - t.p2;
+  if(fabs(ba.x)<=ERR&&fabs(ba.y)<=ERR&&fabs(ba.z)<=ERR&&fabs(cb.x)<=ERR&&fabs(cb.y)<=ERR&&fabs(cb.z)<=ERR){
+    return distance(p,t.p1)-t.R;
+  }
+  float3 ac = t.p1 - t.p3;   
+  float3 pa = p - t.p1;
+  float3 pb = p - t.p2;
+  float3 pc = p - t.p3;
+  float3 nor = cross( ba, ac );
+  return sqrt(
+    (sign(dot(cross(ba,nor),pa)) +
+     sign(dot(cross(cb,nor),pb)) +
+     sign(dot(cross(ac,nor),pc))<2.0)
+     ?
+     min( min(
+     dot2(ba*clamp(dot(ba,pa)/dot2(ba),0.0,1.0)-pa),
+     dot2(cb*clamp(dot(cb,pb)/dot2(cb),0.0,1.0)-pb) ),
+     dot2(ac*clamp(dot(ac,pc)/dot2(ac),0.0,1.0)-pc) )-t.R
+     :
+     dot(nor,pa)*dot(nor,pa)/dot2(nor) )-t.R;
+}
 
 int noise2(int x, int y)
 {
@@ -84,76 +129,43 @@ float hash11(float q){
 	return fract(sin(p)*43758.5453123,&a).x;
   
 }
+// struct L {
+// 	float3  color;		// diffuse color
+// 	bool reflection;	// has reflection 
+// 	bool refraction;	// has refraction
+// 	float n;			// refraction index
+// 	float roughness;	// Cook-Torrance roughness
+// 	float fresnel;		// Cook-Torrance fresnel reflectance
+// 	float density;		// Cook-Torrance color density i.e. fraction of diffuse reflection
+
+// };
+// struct triangle{
+//     float3 p1;    
+//     float3 p2;
+//     float3 p3;
+//     float R;
+//     struct L L;    
+// };
 __kernel void render(
     sampler_t sampler_host,
+    read_only image2d_t triangles, //float3 
+    //h(1)=p1
+    //h(2)=p2
+    //h(3)=p3
+    //h(4).x=radius
+    //h(4).y=n
+    //h(4).z=conditional
+    //when (h(4).z==1) : ((reflection==false) &&(refraction==false))
+    //when (h(4).z==2) : ((reflection==false) &&(refraction==true ))
+    //when (h(4).z==3) : ((reflection==true ) &&(refraction==false))
+    //when (h(4).z==4) : ((reflection==true ) &&(refraction==true ))
+    //h(5).x=roughness
+    //h(5).y=fresnel
+    //h(5).z=density
     read_only image2d_t src_image1,
     read_only image2d_t src_image2,
-    write_only image2d_t dst_image,
-    int xgroup,
-    int ygroup,
-    int width,
-    int height,
-    float time
-) {
-    int2 coord = (int2)(get_global_id(0),get_global_id(1));
-    float2 uv = (float2)(((float)get_global_id(0)+.001)/(float)(width),((float)get_global_id(1)+.001)/(float)height);
-    float2 i = (float2)(1.00/width,0/height);
-    float2 j = (float2)(0/width,1.00/height);
-    float2 pcoord = (float2)((float)get_global_id(0)+width*xgroup,(float)get_global_id(1)+height*ygroup);
-    float loop_time = 10;
-    // float time = fmod(t,loop_time); 
-    float b = -1;
-    float p = 1;
-    float noise = 0;
-    float4 pixels = 0;
-    noise = clamp(round((.5+half_exp10(b))*hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.01,2))),0.,1.);
-    pixels = read_imagef(src_image2, sampler_host,uv);//lastframe
-    if(noise>0. && pixels.x>0.&&pixels.y>0.&&pixels.z>0.){
-    pixels *= (1-p);
-    pixels += read_imagef(src_image1, sampler_host,uv)*noise;
-    }else if(noise>0.){
-    pixels = read_imagef(src_image1, sampler_host,uv)*noise;
-    }
-    // pixels = (float4)(pixels.xyz,1.);
-    write_imagef(dst_image, coord,pixels);
-}
-__kernel void renderraw(
-    sampler_t sampler_host,
-    read_only image2d_t src_image1,
-    read_only image2d_t src_image2,
-    write_only image2d_t dst_image,
-    int xgroup,
-    int ygroup,
-    int width,
-    int height,
-    float time
-) {
-    int2 coord = (int2)(get_global_id(0),get_global_id(1));
-    float2 uv = (float2)(((float)get_global_id(0)+.001)/(float)(width),((float)get_global_id(1)+.001)/(float)height);
-    float2 i = (float2)(1.00/width,0/height);
-    float2 j = (float2)(0/width,1.00/height);
-    float2 pcoord = (float2)((float)get_global_id(0)+width*xgroup,(float)get_global_id(1)+height*ygroup);
-    float loop_time = 10;
-    // float time = fmod(t,loop_time); 
-    float b = -1.;
-    float p = .5;
-    float noise = 0;
-    float4 pixels = 0;
-    noise = clamp(round((.5+half_exp10(b))*hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.01,2))),0.,1.);
-    pixels = read_imagef(src_image1, sampler_host,uv)*noise;
-    //  (1-p)*read_imagef(src_image2, sampler_host,uv);//lastframe
-    pixels *= (float4)(
-        hash11(perlin2d(500.+time+get_global_id(0),100.+time+get_global_id(1),.01,2)),
-        hash11(perlin2d(2.00+time+get_global_id(0),2.00+time+get_global_id(1),.01,2)),
-        hash11(perlin2d(2.00+time+get_global_id(1),2.00+time+get_global_id(0),.01,2)),1.);
-    pixels = (float4)(pixels.xyz,1.);
-    write_imagef(dst_image, coord,pixels);
-}
-__kernel void add(
-    sampler_t sampler_host,
-    read_only image2d_t src_image1,
-    read_only image2d_t src_image2,
-    write_only image2d_t dst_image,
+    write_only image2d_t dst_image1,
+    write_only image2d_t dst_image2,
     int frameintg,
     float time
 ) 
@@ -188,162 +200,5 @@ __kernel void add(
     // );
     // pixel = noise;
     pixel = (float4)(pixel.xyz,1.);
-    write_imagef(dst_image, coord,pixel);
-}////     // pixels = (float4)(pow(cos((sin(time)*100.+pcoord.y)*0.0628318530718),2.),pow(cos((sin(time)*100.+pcoord.x)*0.0628318530718),2.),0.,1.);////  noise = min(1.,round((.5+half_exp10(b))*hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.01,2))));////  if(noise > 0.){////  /// rendering//// //  pixels = read_imagef(src_image1, sampler_host,uv);//image render////     pixels = read_imagef(src_image2, sampler_host,uv);////     // pixels = (float4)(hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.01,20)),hash11(perlin2d(time+get_global_id(1),time+get_global_id(0),.01,20)),hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.02,20)),1.);//// //  pixels = renderimage();//image render//// //  pixels *= (float4)(noise);////  ///rendering//// pixels = ////      p*pixels+////  (1-p)*read_imagef(src_image2, sampler_host,uv);//lastframe////  }else{//// pixels = ////     read_imagef(src_image2, sampler_host,uv);//lastframe////  }//// //  pixels = read_imagef(src_image1, sampler_host,uv);//lastframe//// pixels = (float4)(pixels.xyz,1.);//// // pixels = (float4)(hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.01,20)),hash11(perlin2d(time+get_global_id(1),time+get_global_id(0),.01,20)),hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.02,20)),1.);//// // pixels = (float4)(//// //     min(1.,round((.5+half_exp10(b))*hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.01,2)))),//// //     min(1.,round((.5+half_exp10(b))*hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.01,2)))),//// //     min(1.,round((.5+half_exp10(b))*hash11(perlin2d(time+get_global_id(0),time+get_global_id(1),.01,2)))),//// //     1.);
-
-__kernel void sobel_edge(
-    sampler_t sampler_host,
-    read_only image2d_t src_image1,
-    read_only image2d_t src_image2,
-    write_only image2d_t dst_image,
-    int xgroup,
-    int ygroup,
-    int width,
-    int height,
-    float time
-){
-    int2 coord = (int2)(get_global_id(0),get_global_id(1));
-    float2 uv = (float2)(((float)get_global_id(0)+.001)/(float)(width),((float)get_global_id(1)+.001)/(float)height);
-    float2 i = (float2)(1.00/width,0/height);
-    float2 j = (float2)(0/width,1.00/height);
-    float2 pcoord = (float2)((float)get_global_id(0)+width*xgroup,(float)get_global_id(1)+height*ygroup);
-    int kernel_rad1 = 7;
-    // float4 pixel = (float4)(0.);
-    float minval = .1;
-    float3 GX = 0;
-    float3 GY = 0; 
-    for (int xs = -kernel_rad1; xs <= kernel_rad1; xs++)
-    {
-        for (int ys = -kernel_rad1; ys <= kernel_rad1; ys++)
-        {
-           GX += min(1.,(read_imagef(src_image1, sampler_host,uv+i*xs+j*ys).xyz*xs/(xs*xs+ys*ys)));
-           GY += min(1.,(read_imagef(src_image1, sampler_host,uv+i*xs+j*ys).xyz*ys/(xs*xs+ys*ys)));
-    }}
-    float4 Go = (float4)((1-GX)*(1-GX)+(1-GY)*(1-GY),1.);
-float mag = length(Go.xyz);
-    float4 G =(float4)((float3)(mag),1.);
-    if(length(Go.xyz)<minval){
-        Go = (float4)(0,0,0,1);
-    }
-    write_imagef(dst_image, coord, Go);
-}
-__kernel void gauss_filter(
-    sampler_t sampler_host,
-    read_only image2d_t src_image1,
-    read_only image2d_t src_image2,
-    write_only image2d_t dst_image,
-    int xgroup,
-    int ygroup,
-    int width,
-    int height,
-    float time
-){
-    int2 coord = (int2)(get_global_id(0),get_global_id(1));
-    float2 uv = (float2)(((float)get_global_id(0)+.001)/(float)(width),((float)get_global_id(1)+.001)/(float)height);
-    float2 i = (float2)(1.00/width,0/height);
-    float2 j = (float2)(0/width,1.00/height);
-    int kernel_rad  = 8;
-    float sigma = 9;
-    float sum_gauss = 0.; 
-    float4 pixel = (float4)(0.);
-    if (sigma==0){
-        pixel = read_imagef(src_image1, sampler_host,uv);
-    }else{
-        for (int xs = -kernel_rad; xs <= kernel_rad; xs++)
-    {
-        for (int ys = -kernel_rad; ys <= kernel_rad; ys++)
-        {
-            
-            float gh = exp(-(float)(xs*xs+ys*ys)*half_recip(sigma*sigma)*0.5)*.1591*half_recip(sigma*sigma);
-            sum_gauss += gh;
-            pixel += read_imagef(src_image1, sampler_host,uv+i*xs+j*ys)*gh;
-        }
-    }
-    pixel *= half_recip(sum_gauss);
-    }
-
-
-    write_imagef(dst_image, coord, pixel);
-}
-__kernel void dyn_gauss(
-    sampler_t sampler_host,
-    read_only image2d_t src_image1,
-    read_only image2d_t src_image2,
-    write_only image2d_t dst_image,
-    int xgroup,
-    int ygroup,
-    int width,
-    int height,
-    float time
-){
-    int2 coord = (int2)(get_global_id(0),get_global_id(1));
-    float2 uv = (float2)(((float)get_global_id(0)+.001)/(float)(width),((float)get_global_id(1)+.001)/(float)height);
-    float2 i = (float2)(1.00/width,0/height);
-    float2 j = (float2)(0/width,1.00/height);
-    float2 pcoord = (float2)((float)get_global_id(0)+width*xgroup,(float)get_global_id(1)+height*ygroup);
-    float const_blur = 0.01;
-    // int kernel_rad1 = 5;
-    // float sigma = 1;
-    float sum_gauss = 0.; 
-    float4 pixel = (float4)(0.);
-    float4 Go = read_imagef(src_image2, sampler_host,uv);
-    float mag = length(Go.xyz);
-    mag = mag*1.414;
-    float kr = 5;
-    int kernel_rad  = half_recip(mag+half_recip(kr));
-
-    // float4 G =(float4)((float3)(mag),1.);
-    if(1==0){
-        pixel += read_imagef(src_image1, sampler_host,uv);
-    }else{
-        for (int xs = -kernel_rad; xs <= kernel_rad; xs++)
-        {
-        for (int ys = -kernel_rad; ys <= kernel_rad; ys++)
-        {
-            float4 kernel_pixel = read_imagef(src_image1, sampler_host,uv+i*xs+j*ys);
-            float gh = exp(-(float)(xs*xs+ys*ys)*(mag+const_blur)*0.5)*.1591*(mag+const_blur)*kernel_pixel.w;
-            sum_gauss += gh;
-            pixel += kernel_pixel*gh;
-        }
-        }
-    pixel *= half_recip(sum_gauss);
-    }
-
-    // // pixel /= (2*kernel_rad+1)*(2*kernel_rad+1);
-    // float4 pixels = read_imagef(src_image, sampler_host,uv);//passthrough
-    pixel = (float4)(pixel.xyz,1.);
-    // pixel = (float4)(Go.xyz,1.);
-    write_imagef(dst_image, coord, pixel);
-}
-__kernel void sharpen(
-    sampler_t sampler_host,
-    read_only image2d_t src_image1,
-    read_only image2d_t src_image2,
-    write_only image2d_t dst_image,
-    int xgroup,
-    int ygroup,
-    int width,
-    int height,
-    float time
-){
-    int2 coord = (int2)(get_global_id(0),get_global_id(1));
-    float2 uv = (float2)(((float)get_global_id(0)+.001)/(float)(width),((float)get_global_id(1)+.001)/(float)height);
-    float2 i = (float2)(1.00/width,0/height);
-    float2 j = (float2)(0/width,1.00/height);
-    float a = 0;
-    float4 pixel = 
-    // -1*read_imagef(src_image1, sampler_host,uv+i*-1+j*-1)+
-    -1*read_imagef(src_image1, sampler_host,uv+i*-1+j*0.)+
-    // -1*read_imagef(src_image1, sampler_host,uv+i*-1+j*1.)+
-    -1*read_imagef(src_image1, sampler_host,uv+i*0.+j*-1)+
-    5*read_imagef(src_image1, sampler_host,uv+i*0.+j*0.)+
-    -1*read_imagef(src_image1, sampler_host,uv+i*0.+j*1.)+
-    // -1*read_imagef(src_image1, sampler_host,uv+i*1.+j*-1)+
-    -1*read_imagef(src_image1, sampler_host,uv+i*1.+j*0.)
-    // -1*read_imagef(src_image1, sampler_host,uv+i*1.+j*1.)
-    ;
-    // pixel /= 9;
-    pixel = (float4)(pixel.xyz,1.);
-    // pixel = (float4)(hash(get_global_id(0)+width*get_global_id(1)),1.);
-   write_imagef(dst_image, coord, pixel); 
-}
+    write_imagef(dst_image1, coord,pixel);
+}////    

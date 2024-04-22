@@ -40,7 +40,7 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
         let mut frames = 0;
         let mut loops = 0;
         let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
-        let world = std::sync::Arc::new(std::sync::Mutex::new(myapp::MyApp::new(pixels,file_path,image.clone(),xtotal,ytotal)));
+        let world = std::sync::Arc::new(std::sync::Mutex::new(myapp::MyApp::new(pixels,file_path,image.clone(),xtotal,ytotal,16)));
         let c2 = std::sync::Arc::clone(&barrier);
 
         let _render_thread = {
@@ -53,37 +53,10 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 worldt.lock().unwrap().src_img1.write(&image::io::Reader::open(image.clone()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
 
             loop {
-                // print!("|");
-                // worldt.lock().unwrap().render("add".to_string());
                 c1.wait();
-
-                let mut worldlocked = worldt.lock().unwrap();
-                // worldlocked.render("add".to_string()).update();
-                // // worldlocked.dst_img.cmd().copy(&worldlocked.src_img1, [0, 0, 0]).enq().unwrap();
-                // worldlocked.dst_img.cmd().copy(&worldlocked.src_img2, [0, 0, 0]).enq().unwrap();
-                // if (worldlocked.time.elapsed().as_millis() as f32/1000.)%10. > 5.
-                // {
-                // worldlocked.src_img1.write(&image::io::Reader::open(image.clone()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
-                // worldlocked.render("renderraw".to_string()).update();
-                // worldlocked.src_img2.write(&image::io::Reader::open("default.jpg".to_string()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
-                // }else{                    
-                worldlocked.render("add".to_string()).update();
-                // worldlocked.dst_img.cmd().copy(&worldlocked.src_img1, [0, 0, 0]).enq().unwrap();
-                worldlocked.dst_img.cmd().copy(&worldlocked.src_img2, [0, 0, 0]).enq().unwrap();
-                // worldlocked.render("gauss_filter".to_string());
-                // worldlocked.dst_img.cmd().copy(&worldlocked.src_img1, [0, 0, 0]).enq().unwrap();
-                // worldlocked.render("sobel_edge".to_string());
-                // worldlocked.dst_img.cmd().copy(&worldlocked.src_img1, [0, 0, 0]).enq().unwrap();
-                // worldlocked.render("gauss_filter".to_string()).update();
-                // // worldlocked.src_img1.write(&image::io::Reader::open(image.clone()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
-                // worldlocked.src_img2.cmd().copy(&worldlocked.src_img1, [0, 0, 0]).enq().unwrap();
-                // worldlocked.dst_img.cmd().copy(&worldlocked.src_img2, [0, 0, 0]).enq().unwrap();
-                // worldlocked.render("dyn_gauss".to_string()).update();
-                // worldlocked.dst_img.cmd().copy(&worldlocked.src_img2, [0, 0, 0]).enq().unwrap();
-                // worldlocked.render("sharpen".to_string());
-                // worldlocked.src_img1.write(&image::io::Reader::open(image.clone()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
-                // }
-                // worldlocked.src_img1.write(&image::io::Reader::open(image.clone()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
+                let mut worldlocked = worldt.lock().unwrap();                    
+                worldlocked.render("render".to_string()).update();
+                worldlocked.dst_img1.cmd().copy(&worldlocked.src_img2, [0, 0, 0]).enq().unwrap();
             }
             })
         };
