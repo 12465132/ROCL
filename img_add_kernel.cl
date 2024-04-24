@@ -1,7 +1,7 @@
 
 
 __constant int SEED = 0;
-__constant float ERR =.0000001;
+__constant float ERR =.00000001;
 __constant int hash[] = {208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,254,245,255,247,247,40,
                      185,248,251,245,28,124,204,204,76,36,1,107,28,234,163,202,224,245,128,167,204,
                      9,92,217,54,239,174,173,102,193,189,190,121,100,108,167,44,43,77,180,204,8,81,
@@ -14,11 +14,18 @@ __constant int hash[] = {208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,25
                      101,120,99,3,186,86,99,41,237,203,111,79,220,135,158,42,30,154,120,67,87,167,
                      135,176,183,191,253,115,184,21,233,58,129,233,142,39,128,211,118,137,139,255,
                      114,20,218,113,154,27,127,246,250,1,8,198,250,209,92,222,173,21,88,102,219};
-float dot2( float3 v ) { return dot(v,v); }
+struct Camera{
+    float3 P,V,C;//point, cam.Cection, color
+    };
 struct Data{
-float minSDFDist;
-int index;
-};
+    float3 intersectPoint;
+    int index;
+    bool intersect;
+    };
+struct RTI{
+    bool isIntersect;
+    float3 P;
+    };
 struct L {
 	float3  color;		// diffuse color
 	bool reflection;	// has reflection 
@@ -27,59 +34,34 @@ struct L {
 	float roughness;	// Cook-Torrance roughness
 	float fresnel;		// Cook-Torrance fresnel reflectance
 	float density;		// Cook-Torrance color density i.e. fraction of diffuse reflection
-
-};
+    };
 
 struct triangle{
     float3 p1;    
     float3 p2;
     float3 p3;
-    float R;
     struct L L;    
-};
-float udTriangle( float3 p, struct triangle t )
-{
-  float3 ba = t.p2 - t.p1; 
-  float3 cb = t.p3 - t.p2;
-  if(fabs(ba.x)<=ERR&&fabs(ba.y)<=ERR&&fabs(ba.z)<=ERR&&fabs(cb.x)<=ERR&&fabs(cb.y)<=ERR&&fabs(cb.z)<=ERR){
-    return distance(p,t.p1)-t.R;
-  }
-  float3 ac = t.p1 - t.p3;   
-  float3 pa = p - t.p1;
-  float3 pb = p - t.p2;
-  float3 pc = p - t.p3;
-  float3 nor = cross( ba, ac );
-  return sqrt(
-    (sign(dot(cross(ba,nor),pa)) +
-     sign(dot(cross(cb,nor),pb)) +
-     sign(dot(cross(ac,nor),pc))<2.0)
-     ?
-     min( min(
-     dot2(ba*clamp(dot(ba,pa)/dot2(ba),0.0,1.0)-pa),
-     dot2(cb*clamp(dot(cb,pb)/dot2(cb),0.0,1.0)-pb) ),
-     dot2(ac*clamp(dot(ac,pc)/dot2(ac),0.0,1.0)-pc) )-t.R
-     :
-     dot(nor,pa)*dot(nor,pa)/dot2(nor) )-t.R;
-}
+    };
 
+float dot2( float3 v ) { return dot(v,v); }
 int noise2(int x, int y)
-{
+    {
     int tmp = hash[(y + SEED) % 256];
     return hash[(tmp + x) % 256];
-}
+    }
 
 float lin_inter(float x, float y, float s)
-{
+    {
     return x + s * (y-x);
-}
+    }
 
 float smooth_inter(float x, float y, float s)
-{
+    {
     return lin_inter(x, y, s * s * (3-2*s));
-}
+    }
 
 float noise2d(float x, float y)
-{
+    {
     int x_int = x;
     int y_int = y;
     float x_frac = x - x_int;
@@ -91,10 +73,10 @@ float noise2d(float x, float y)
     float low = smooth_inter(s, t, x_frac);
     float high = smooth_inter(u, v, x_frac);
     return smooth_inter(low, high, y_frac);
-}
+    }
 
 float perlin2d(float x, float y, float freq, int depth)
-{
+    {
     float xa = x*freq;
     float ya = y*freq;
     float amp = 1.0;
@@ -112,17 +94,18 @@ float perlin2d(float x, float y, float freq, int depth)
     }
 
     return fin/div;
-}
+    }
 
 float3 hash33( float3 p )      // this hash is not production ready, please
-{                        // replace this by something better
+    {                        // replace this by something better
 	p = (float3)( dot(p,(float3)(127.1,311.7, 74.7)),
 			  dot(p,(float3)(269.5,183.3,246.1)),
 			  dot(p,(float3)(113.5,271.9,124.6)));
     float3 a = 0;
 	return -1.0 + 2.0*fract(sin(p)*43758.5453123,&a);
-}
-float hash11(float q){
+    }
+float hash11(float q)
+    {
     float3 p = (float3)(q);
   	p = (float3)( dot(p,(float3)(127.1,311.7, 74.7)),
 			  dot(p,(float3)(269.5,183.3,246.1)),
@@ -130,50 +113,177 @@ float hash11(float q){
     float3 a = 0;
 	return fract(sin(p)*43758.5453123,&a).x;
   
-}
-// struct L {
-// 	float3  color;		// diffuse color
-// 	bool reflection;	// has reflection 
-// 	bool refraction;	// has refraction
-// 	float n;			// refraction index
-// 	float roughness;	// Cook-Torrance roughness
-// 	float fresnel;		// Cook-Torrance fresnel reflectance
-// 	float density;		// Cook-Torrance color density i.e. fraction of diffuse reflection
+    }
+//comments
+    // struct L {
+    // 	float3  color;		// diffuse color
+    // 	bool reflection;	// has reflection 
+    // 	bool refraction;	// has refraction
+    // 	float n;			// refraction index
+    // 	float roughness;	// Cook-Torrance roughness
+    // 	float fresnel;		// Cook-Torrance fresnel reflectance
+    // 	float density;		// Cook-Torrance color density i.e. fraction of diffuse reflection
 
-// };
-// struct triangle{
-//     float3 p1;    
-//     float3 p2;
-//     float3 p3;
-//     float R;
-//     struct L L;    
-// };
+    // };
+    // struct triangle{
+    //     float3 p1;    
+    //     float3 p2;
+    //     float3 p3;
+    //     float R;
+    //     struct L L;    
+    // };
+struct Data init(){
+    struct Data OD;
+    OD.intersectPoint = (float3)(0.);
+    OD.index=-1;
+    OD.intersect=false;
+    return OD;}
+struct RTI intersectF(){
+    struct RTI T;
+    T.isIntersect = false;
+    T.P = (float3)(-1.);
+    return T;
+    }
+struct RTI intersectT(float3 B){
+    struct RTI T;
+    T.isIntersect = true;
+    T.p = B;
+    return T;
+    }
+float udTriangle( float3 p, float3 p1, float3 p2, float3 p3, float R){
+  float3 ba = p2 - p1; 
+  float3 cb = p3 - p2;
+  if(fabs(ba.x)<=ERR&&fabs(ba.y)<=ERR&&fabs(ba.z)<=ERR&&fabs(cb.x)<=ERR&&fabs(cb.y)<=ERR&&fabs(cb.z)<=ERR){
+    return distance(p,p1)-R;
+  }
+  float3 ac = p1 - p3;   
+  float3 pa = p - p1;
+  float3 pb = p - p2;
+  float3 pc = p - p3;
+  float3 nor = cross( ba, ac );
+  return sqrt(
+    (sign(dot(cross(ba,nor),pa)) +
+     sign(dot(cross(cb,nor),pb)) +
+     sign(dot(cross(ac,nor),pc))<2.0)
+     ?
+     min( min(
+     dot2(ba*clamp(dot(ba,pa)/dot2(ba),0.0,1.0)-pa),
+     dot2(cb*clamp(dot(cb,pb)/dot2(cb),0.0,1.0)-pb) ),
+     dot2(ac*clamp(dot(ac,pc)/dot2(ac),0.0,1.0)-pc) )-R
+     :
+     dot(nor,pa)*dot(nor,pa)/dot2(nor) )-R;
+    }
 
-genNormal()
-Data SDFGlobal(float3 p, read_only image2d_t triangles){
+struct RTI rayTriangleIntersect(struct Camera cam,float3 v0, float3 v1, float3 v2){
+    float3 B;
+    #ifdef MOLLER_TRUMBORE
+    float3 v0v1 = v1 - v0;
+    float3 v0v2 = v2 - v0;
+    float3 pvec = cross(cam.C,v0v2);
+    float det = dot(v0v1,pvec);
+    #ifdef CULLING
+    // if the determinant is negative the triangle is backfacing
+    // if the determinant is close to 0, the ray misses the triangle
+    if (det < kEpsilon) return intersectF();
+    #else
+    // ray and triangle are parallel if det is close to 0
+    if (fabs(det) < kEpsilon) return intersectF();
+    #endif
+    float invDet = 1 / det;
+
+    float3 tvec = cam.V - v0;
+    B.y = dot(tvec,pvec) * invDet;
+    if (B.y < 0 || B.y > 1) return intersectF();
+
+    float3 qvec = tvec.crossProduct(v0v1);
+    B.z = dot(cam.C,qvec) * invDet;
+    if (B.z < 0 || B.y + B.z > 1) return intersectF();
     
-}
-vec3 camoffset (vec3 v,vec2 o){
-    return normalize(
-        vec3(v.x,v.y,v.z))+
-        normalize(vec3(-(v.y),(v.x),0.))*
-        o.x+normalize(vec3(-v.z*v.x,-v.z*v.y,v.x*v.x+v.y*v.y))*o.y;
+    B.x = dot(v0v2,qvec) * invDet;
+    
+    return intersectT(B.x*v0+b.y*v1+B.z*v2);
+    #else
+    // compute plane's normal
+    float3 v0v1 = v1 - v0;
+    float3 v0v2 = v2 - v0;
+    // no need to normalize
+    float3 N = cross(v0v1,v0v2); // N //TODO! possably bugged
+    float denom = dot(N,N);
+    
+    // Step 1: finding P
+    
+    // check if ray and plane are parallel ?
+    float NdotRayDirection = dot(N,cam.C);
+
+    if (fabs(NdotRayDirection) < ERR) // almost 0
+        return intersectF(); // they are parallel so they don't intersect ! 
+
+    // compute d parameter using equation 2
+    float d = dot(-N,v0);
+    
+    // compute t (equation 3)
+    B.x = -(dot(N,cam.V) + d) / NdotRayDirection;
+    
+    // check if the triangle is in behind the ray
+    if (B.x < 0) return intersectF(); // the triangle is behind
+ 
+    // compute the intersection point using equation 1
+    float3 P = cam.V + B.x * cam.C;
+ 
+    // Step 2: inside-outside test
+    float3 C; // vector perpendicular to triangle's plane
+ 
+    // edge 0
+    float3 edge0 = v1 - v0; 
+    float3 vp0 = P - v0;
+    C = cross(edge0,vp0);//TODO! possably bugged
+    if (dot(N,C) < 0) return intersectF(); // P is on the right side//TODO! possably bugged
+ 
+    // edge 1
+    float3 edge1 = v2 - v1; 
+    float3 vp1 = P - v1;
+    C = cross(edge1,vp1);//TODO! possably bugged
+    if ((B.y = dot(N,C)) < 0)  return intersectF(); // P is on the right side//TODO! possably bugged
+ 
+    // edge 2
+    float3 edge2 = v0 - v2; 
+    float3 vp2 = P - v2;
+    C = cross(edge2,vp2);//TODO! possably bugged
+    if ((B.z = dot(N,C)) < 0) return intersectF(); // P is on the right side;//TODO! possably bugged
+
+    B.y /= denom;
+    B.z /= denom;
+
+    return intersectT(B.x*v0+B.y*v1+B.z*v2); // this ray hits the triangle
+    #endif
+    }
+struct Data GlobalIntersect(sampler_t sampler_host, struct Camera cam, read_only image2d_t triangles){
+    struct Data D = init();
+    for(int i = 0;i<get_image_height(triangles);i++){
+        struct RTI intersect = rayTriangleIntersect(cam,read_imagef(triangles,sampler_host,(int2)(0,i)).xyz,read_imagef(triangles,sampler_host,(int2)(0,i)).xyz,read_imagef(triangles,sampler_host,(int2)(0,i)).xyz);
+        if(D.intersect == false){
+            D.intersect = true;
+            D.index = i;
+            D.intersectPoint = intersect.P;
+        }else{
+
         }
-Data init(){Data OD;OD.SDFDist = 10000000.,OD.typeindex=-1,OD.index=-1;return OD;}
-struct Camera{vec3 V,C;}C;
-struct Light{vec3 C,S;}L;
-const float 
-distOutFCCAM 		= 40.f,
-GlowValue 			= 1000.,
-Glowscale 			= 5.,
-GlowValue2 			= 100.,
-Glowscale2 			= 1.,
-GlowMult2 			= .0,
-reflection			= .8;
-const int //performace <-> precision
-RenderDistance 		= 100,
-stepcount 			= 70,
-bouncecount 		= 4;
+    }
+}
+// float3 genNormal(float3 p, read_only image2d_t triangles){
+
+    // }
+float3 camoffset (float3 v,float3 o){
+    return normalize(
+        (float3)(v.x,v.y,v.z))+
+        normalize((float3)(-(v.y),(v.x),0.))*
+        o.x+normalize((float3)(-v.z*v.x,-v.z*v.y,v.x*v.x+v.y*v.y))*o.y;
+    }
+__constant int //performace <-> precision
+    RenderDistance 		= 100,
+    stepcount 			= 70,
+    bouncecount 		= 4;
+
 __kernel void render(
     sampler_t sampler_host,
     read_only image2d_t triangles, //float3 
@@ -196,8 +306,7 @@ __kernel void render(
     write_only image2d_t dst_image2,
     int frameintg,
     float time
-) 
-{
+){
     
     int2 coord = (int2)(get_global_id(0),get_global_id(1));
     float2 uv = (float2)(((float)get_global_id(0)+.001)/(float)(get_global_size(0)),((float)get_global_id(1)+.001)/(float)get_global_size(1));
@@ -229,4 +338,4 @@ __kernel void render(
     // pixel = noise;
     pixel = (float4)(pixel.xyz,1.);
     write_imagef(dst_image1, coord,pixel);
-}////    
+    }////    
