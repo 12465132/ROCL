@@ -338,7 +338,7 @@ __kernel void render(
     float time
 ){
     int2 coord = (int2)(get_global_id(0),get_global_id(1));
-    float2 uvi = (float2)(((float)get_global_id(0)+.001)/(float)(get_global_size(0)),((float)get_global_id(1)+.001)/(float)get_global_size(1));
+    float2 uvi = (float2)(((float)get_global_id(0)+.001)/(float)(get_global_size(0)),((float)get_global_id(1)+.001)/(float)get_global_size(0));
     float2 uv = 2*uvi-1.;
     float2 i = (float2)(1.00/get_global_size(0),0/get_global_size(1));
     float2 j = (float2)(0/get_global_size(0),1.00/get_global_size(1));
