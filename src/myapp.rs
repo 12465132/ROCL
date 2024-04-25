@@ -195,32 +195,38 @@ impl MyApp {
             if let ocl::SpatialDims::Two(_,maxtriangles) = self.triangles.dims(){
                 if triangles.len()>*maxtriangles {return self}
             }
-            let mut a: Vec<f32> = vec![0.;triangles.len()*6*3];
+            let mut a: Vec<f32> = vec![0.5;triangles.len()*6*4];
             let mut b = a.as_mut_slice();
             for (i,triangle) in triangles.iter().enumerate() {
-                b[i+01]= triangle.p1[0];                                //h(1)=p1.x
-                b[i+02]= triangle.p1[1];                                //h(1)=p1.y
-                b[i+03]= triangle.p1[2];                                //h(1)=p1.z
-                b[i+04]= triangle.p2[0];                                //h(2)=p2.x
-                b[i+05]= triangle.p2[1];                                //h(2)=p2.y
-                b[i+06]= triangle.p2[2];                                //h(2)=p2.z
-                b[i+07]= triangle.p3[0];                                //h(3)=p3.x
-                b[i+08]= triangle.p3[1];                                //h(3)=p3.y
-                b[i+09]= triangle.p3[2];                                //h(3)=p3.z
-                b[i+10]= triangle.R;                                    //h(4).x=radius
-                b[i+11]= triangle.L.n;                                  //h(4).y=n
+                b[6*4*i+00]= triangle.p1[0];                                //h(1)=p1.x
+                b[6*4*i+01]= triangle.p1[1];                                //h(1)=p1.x
+                b[6*4*i+02]= triangle.p1[2];                                //h(1)=p1.y
+                b[6*4*i+03]= 0.;                                //h(1)=p1.z
+                b[6*4*i+04]= triangle.p2[0];                                //h(2)=p2.x
+                b[6*4*i+05]= triangle.p2[1];                                //h(2)=p2.y
+                b[6*4*i+06]= triangle.p2[2];                                //h(2)=p2.z
+                b[6*4*i+07]= 0.;                                //h(3)=p3.x
+                b[6*4*i+08]= triangle.p3[0];                        //h(3)=p3.y
+                b[6*4*i+09]= triangle.p3[1];                        //h(3)=p3.z
+                b[6*4*i+10]= triangle.p3[2];                          //h(4).x=radius
+                b[6*4*i+11]= 0.;
+                b[6*4*i+12]= triangle.R;                    //h(5).x=roughness
+                b[6*4*i+13]= triangle.L.n;                        //h(5).y=fresnel
+                b[6*4*i+15]= 0.;                           //h(5).x=color.x
+                b[6*4*i+16]= triangle.L.roughness;                           //h(5).y=color.y
+                b[6*4*i+17]= triangle.L.fresnel; 
+                b[6*4*i+18]= triangle.L.density; 
+                b[6*4*i+19]= 0.; 
+                b[6*4*i+20]= triangle.L.color[0]; 
+                b[6*4*i+21]= triangle.L.color[1]; 
+                b[6*4*i+22]= triangle.L.color[2]; 
+                b[6*4*i+23]= 1.; 
                 match (triangle.L.reflection,triangle.L.refraction){    //h(4).z=conditional
-                    (false,false)=>b[i+12]=1.,                          //(h(4).z=1) when ((reflection==false) &&(refraction==false))
-                    (false,true)=>b[i+12]=2.,                           //(h(4).z=2) when ((reflection==false) &&(refraction==true ))
-                    (true,false)=>b[i+12]=3.,                           //(h(4).z=3) when ((reflection==true ) &&(refraction==false))
-                    (true,true)=>b[i+12]=4.,                            //(h(4).z=4) when ((reflection==true ) &&(refraction==true ))
-                    _=>return self}                                     //future 
-                b[i+13]= triangle.L.roughness;                          //h(5).x=roughness
-                b[i+14]= triangle.L.fresnel;                            //h(5).y=fresnel
-                b[i+15]= triangle.L.density;                            //h(5).z=density
-                b[i+16]= triangle.L.color[0];                            //h(5).x=color.x
-                b[i+17]= triangle.L.color[1];                            //h(5).y=color.y
-                b[i+18]= triangle.L.color[2];                            //h(5).z=color.z
+                    (false,false)=>b[6*4*i+15]=1.,                          //(h(4).z=1) when ((reflection==false) &&(refraction==false))
+                    (false,true)=> b[6*4*i+15]=2.,                           //(h(4).z=2) when ((reflection==false) &&(refraction==true ))
+                    (true,false)=> b[6*4*i+15]=3.,                           //(h(4).z=3) when ((reflection==true ) &&(refraction==false))
+                    (true,true)=>  b[6*4*i+15]=4.,                            //(h(4).z=4) when ((reflection==true ) &&(refraction==true ))
+                    _=>return self}                              //h(5).z=color.z
             }
             self.triangles.write(b).enq().unwrap();
             self
@@ -286,89 +292,89 @@ pub fn myapprender(
 
 }
 
-bool rayTriangleIntersect(
-    const Vec3f &orig, const Vec3f &dir,
-    const Vec3f &v0, const Vec3f &v1, const Vec3f &v2,
-    float &t, float &u, float &v)
-{
-#ifdef MOLLER_TRUMBORE
-    Vec3f v0v1 = v1 - v0;
-    Vec3f v0v2 = v2 - v0;
-    Vec3f pvec = dir.crossProduct(v0v2);
-    float det = v0v1.dotProduct(pvec);
-#ifdef CULLING
-    // if the determinant is negative the triangle is backfacing
-    // if the determinant is close to 0, the ray misses the triangle
-    if (det < kEpsilon) return false;
-#else
-    // ray and triangle are parallel if det is close to 0
-    if (fabs(det) < kEpsilon) return false;
-#endif
-    float invDet = 1 / det;
+// bool rayTriangleIntersect(
+//     const Vec3f &orig, const Vec3f &dir,
+//     const Vec3f &v0, const Vec3f &v1, const Vec3f &v2,
+//     float &t, float &u, float &v)
+// {
+// #ifdef MOLLER_TRUMBORE
+//     Vec3f v0v1 = v1 - v0;
+//     Vec3f v0v2 = v2 - v0;
+//     Vec3f pvec = dir.crossProduct(v0v2);
+//     float det = v0v1.dotProduct(pvec);
+// #ifdef CULLING
+//     // if the determinant is negative the triangle is backfacing
+//     // if the determinant is close to 0, the ray misses the triangle
+//     if (det < kEpsilon) return false;
+// #else
+//     // ray and triangle are parallel if det is close to 0
+//     if (fabs(det) < kEpsilon) return false;
+// #endif
+//     float invDet = 1 / det;
 
-    Vec3f tvec = orig - v0;
-    u = tvec.dotProduct(pvec) * invDet;
-    if (u < 0 || u > 1) return false;
+//     Vec3f tvec = orig - v0;
+//     u = tvec.dotProduct(pvec) * invDet;
+//     if (u < 0 || u > 1) return false;
 
-    Vec3f qvec = tvec.crossProduct(v0v1);
-    v = dir.dotProduct(qvec) * invDet;
-    if (v < 0 || u + v > 1) return false;
+//     Vec3f qvec = tvec.crossProduct(v0v1);
+//     v = dir.dotProduct(qvec) * invDet;
+//     if (v < 0 || u + v > 1) return false;
     
-    t = v0v2.dotProduct(qvec) * invDet;
+//     t = v0v2.dotProduct(qvec) * invDet;
     
-    return true;
-#else
-    // compute plane's normal
-    Vec3f v0v1 = v1 - v0;
-    Vec3f v0v2 = v2 - v0;
-    // no need to normalize
-    Vec3f N = v0v1.crossProduct(v0v2); // N
-    float denom = N.dotProduct(N);
+//     return true;
+// #else
+//     // compute plane's normal
+//     Vec3f v0v1 = v1 - v0;
+//     Vec3f v0v2 = v2 - v0;
+//     // no need to normalize
+//     Vec3f N = v0v1.crossProduct(v0v2); // N
+//     float denom = N.dotProduct(N);
     
-    // Step 1: finding P
+//     // Step 1: finding P
     
-    // check if ray and plane are parallel ?
-    float NdotRayDirection = N.dotProduct(dir);
+//     // check if ray and plane are parallel ?
+//     float NdotRayDirection = N.dotProduct(dir);
 
-    if (fabs(NdotRayDirection) < kEpsilon) // almost 0
-        return false; // they are parallel so they don't intersect ! 
+//     if (fabs(NdotRayDirection) < kEpsilon) // almost 0
+//         return false; // they are parallel so they don't intersect ! 
 
-    // compute d parameter using equation 2
-    float d = -N.dotProduct(v0);
+//     // compute d parameter using equation 2
+//     float d = -N.dotProduct(v0);
     
-    // compute t (equation 3)
-    t = -(N.dotProduct(orig) + d) / NdotRayDirection;
+//     // compute t (equation 3)
+//     t = -(N.dotProduct(orig) + d) / NdotRayDirection;
     
-    // check if the triangle is in behind the ray
-    if (t < 0) return false; // the triangle is behind
+//     // check if the triangle is in behind the ray
+//     if (t < 0) return false; // the triangle is behind
  
-    // compute the intersection point using equation 1
-    Vec3f P = orig + t * dir;
+//     // compute the intersection point using equation 1
+//     Vec3f P = orig + t * dir;
  
-    // Step 2: inside-outside test
-    Vec3f C; // vector perpendicular to triangle's plane
+//     // Step 2: inside-outside test
+//     Vec3f C; // vector perpendicular to triangle's plane
  
-    // edge 0
-    Vec3f edge0 = v1 - v0; 
-    Vec3f vp0 = P - v0;
-    C = edge0.crossProduct(vp0);
-    if (N.dotProduct(C) < 0) return false; // P is on the right side
+//     // edge 0
+//     Vec3f edge0 = v1 - v0; 
+//     Vec3f vp0 = P - v0;
+//     C = edge0.crossProduct(vp0);
+//     if (N.dotProduct(C) < 0) return false; // P is on the right side
  
-    // edge 1
-    Vec3f edge1 = v2 - v1; 
-    Vec3f vp1 = P - v1;
-    C = edge1.crossProduct(vp1);
-    if ((u = N.dotProduct(C)) < 0)  return false; // P is on the right side
+//     // edge 1
+//     Vec3f edge1 = v2 - v1; 
+//     Vec3f vp1 = P - v1;
+//     C = edge1.crossProduct(vp1);
+//     if ((u = N.dotProduct(C)) < 0)  return false; // P is on the right side
  
-    // edge 2
-    Vec3f edge2 = v0 - v2; 
-    Vec3f vp2 = P - v2;
-    C = edge2.crossProduct(vp2);
-    if ((v = N.dotProduct(C)) < 0) return false; // P is on the right side;
+//     // edge 2
+//     Vec3f edge2 = v0 - v2; 
+//     Vec3f vp2 = P - v2;
+//     C = edge2.crossProduct(vp2);
+//     if ((v = N.dotProduct(C)) < 0) return false; // P is on the right side;
 
-    u /= denom;
-    v /= denom;
+//     u /= denom;
+//     v /= denom;
 
-    return true; // this ray hits the triangle
-#endif
-}
+//     return true; // this ray hits the triangle
+// #endif
+// }

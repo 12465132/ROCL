@@ -57,40 +57,72 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
         let mut triangles = 
         vec![
         myapp::triangle{
-            p1:[10.,0.,-2.],
-            p2:[0.,10.,-2.],    
-            p3:[0.,0.,-2.],  
-            R:0.01,  
-            L:defaultL.clone(),
-        },
-        myapp::triangle{
-            p1:[10.,0.,-2.],
-            p2:[0.,-10.,-2.],    
-            p3:[0.,0.,-2.],  
-            R:0.01,  
-            L:defaultL.clone(),
-        },
-        myapp::triangle{
             p1:[-10.,0.,-2.],
             p2:[0.,10.,-2.],    
             p3:[0.,0.,-2.],  
-            R:0.01,  
-            L:defaultL.clone(),
-        },
-        myapp::triangle{
-            p1:[-10.,0.,-2.],
-            p2:[0.,-10.,-2.],    
-            p3:[0.,0.,-2.],  
-            R:0.01,  
-            L:defaultL.clone(),
-        },
-        myapp::triangle{
-            p1:[1.,1.,-1.],
-            p2:[2.,-2.,-1.],    
-            p3:[3.,2.,1.],  
             R:0.01,  
             L:myapp::L { 
-                color: [0.9,0.7,0.3], 
+                color: [1.0,0.0,1.0], 
+                reflection: true, 
+                refraction: false, 
+                n: 0., 
+                roughness: 0., 
+                fresnel: 0., 
+                density: 0. 
+            },
+        },
+        myapp::triangle{
+            p1:[10.,0.,-2.],
+            p2:[0.,-10.,-2.],    
+            p3:[0.,0.,-2.],  
+            R:0.01,  
+            L:myapp::L { 
+                color: [0.0,1.0,1.0], 
+                reflection: true, 
+                refraction: false, 
+                n: 0., 
+                roughness: 0., 
+                fresnel: 0., 
+                density: 0. 
+            },
+        },
+        myapp::triangle{
+            p1:[-10.,0.,-2.],
+            p2:[0.,-10.,-2.],    
+            p3:[0.,0.,-2.],  
+            R:0.01,  
+            L:myapp::L { 
+                color: [1.0,1.0,0.0], 
+                reflection: true, 
+                refraction: false, 
+                n: 0., 
+                roughness: 0., 
+                fresnel: 0., 
+                density: 0. 
+            },
+        },
+        myapp::triangle{
+            p1:[10.,0.,-2.],
+            p2:[0.,10.,-2.],    
+            p3:[0.,0.,-2.],  
+            R:0.01,  
+            L:myapp::L { 
+                color: [1.0,1.0,1.0], 
+                reflection: true, 
+                refraction: false, 
+                n: 0., 
+                roughness: 0., 
+                fresnel: 0., 
+                density: 0. 
+            },
+        },
+        myapp::triangle{
+            p1:[4.,4.,-3.],
+            p2:[2.,-3.,-3.],    
+            p3:[4.,2.,3.],  
+            R:0.01,  
+            L:myapp::L { 
+                color: [0.5,0.7,0.5], 
                 reflection: true, 
                 refraction: false, 
                 n: 0., 

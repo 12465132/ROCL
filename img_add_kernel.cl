@@ -1,5 +1,6 @@
 
-#define MOLLER_TRUMBORE;
+// #define MOLLER_TRUMBORE
+// #define CULLING
 
 __constant int SEED = 0;
 __constant float ERR =.00000001;
@@ -26,7 +27,7 @@ struct Camera{
 struct Data{
     float3 intersectPoint;
     int index;
-    bool intersect;
+    bool isIntersect;
     };
 struct RTI{
     bool isIntersect;
@@ -140,9 +141,9 @@ float hash11(float q)
     // };
 struct Data init(){
     struct Data OD;
-    OD.intersectPoint = (float3)(0.);
+    OD.intersectPoint = (float3)(100000000.);
     OD.index=-1;
-    OD.intersect=false;
+    OD.isIntersect=false;
     return OD;}
 struct RTI intersectF(){
     struct RTI T;
@@ -180,12 +181,14 @@ float udTriangle( float3 p, float3 p1, float3 p2, float3 p3, float R){
      dot(nor,pa)*dot(nor,pa)/dot2(nor) )-R;
     }
 
-struct RTI rayTriangleIntersect(struct Camera cam,float3 v0, float3 v1, float3 v2){
+struct RTI rayTriangleIntersect(
+    struct Camera cam,float3 v0, float3 v1, float3 v2
+    ){
     float3 B;
     #ifdef MOLLER_TRUMBORE
     float3 v0v1 = v1 - v0;
     float3 v0v2 = v2 - v0;
-    float3 pvec = cross(cam.C,v0v2);
+    float3 pvec = cross( cam.V ,v0v2);
     float det = dot(v0v1,pvec);
     #ifdef CULLING
     // if the determinant is negative the triangle is backfacing
@@ -197,17 +200,17 @@ struct RTI rayTriangleIntersect(struct Camera cam,float3 v0, float3 v1, float3 v
     #endif
     float invDet = 1 / det;
 
-    float3 tvec = cam.V - v0;
+    float3 tvec =  cam.P  - v0;
     B.y = dot(tvec,pvec) * invDet;
     if (B.y < 0 || B.y > 1) return intersectF();
 
     float3 qvec = cross(tvec,v0v1);
-    B.z = dot(cam.C,qvec) * invDet;
+    B.z = dot( cam.V ,qvec) * invDet;
     if (B.z < 0 || B.y + B.z > 1) return intersectF();
     
     B.x = dot(v0v2,qvec) * invDet;
     
-    return intersectT(B.x*v0+B.y*v1+(1-B.x-B.y)*v2);
+    return intersectT((1-B.y-B.z)*v0+B.y*v1+B.z*v2);
     #else
     // compute plane's normal
     float3 v0v1 = v1 - v0;
@@ -219,7 +222,7 @@ struct RTI rayTriangleIntersect(struct Camera cam,float3 v0, float3 v1, float3 v
     // Step 1: finding P
     
     // check if ray and plane are parallel ?
-    float NdotRayDirection = dot(N,cam.C);
+    float NdotRayDirection = dot(N, cam.V );
 
     if (fabs(NdotRayDirection) < ERR) // almost 0
         return intersectF(); // they are parallel so they don't intersect ! 
@@ -228,13 +231,13 @@ struct RTI rayTriangleIntersect(struct Camera cam,float3 v0, float3 v1, float3 v
     float d = dot(-N,v0);
     
     // compute t (equation 3)
-    B.x = -(dot(N,cam.V) + d) / NdotRayDirection;
+    B.x = -(dot(N, cam.P ) + d) / NdotRayDirection;
     
     // check if the triangle is in behind the ray
     if (B.x < 0) return intersectF(); // the triangle is behind
  
     // compute the intersection point using equation 1
-    float3 P = cam.V + B.x * cam.C;
+    float3 P =  cam.P  + B.x *  cam.V ;
  
     // Step 2: inside-outside test
     float3 C; // vector perpendicular to triangle's plane
@@ -260,27 +263,35 @@ struct RTI rayTriangleIntersect(struct Camera cam,float3 v0, float3 v1, float3 v
     B.y /= denom;
     B.z /= denom;
 
-    return intersectT(B.x*v0+B.y*v1+(1-B.x-B.y)*v2); // this ray hits the triangle
+    return intersectT(P); // this ray hits the triangle
     #endif
     }
 struct Data GlobalIntersect(sampler_t sampler_host, struct Camera cam, read_only image2d_t triangles){
     struct Data D = init();
-    for(int i = 0;i<get_image_height(triangles);i++){
-        struct RTI intersect = rayTriangleIntersect(cam,read_imagef(triangles,sampler_host,(int2)(0,i)).xyz,read_imagef(triangles,sampler_host,(int2)(0,i)).xyz,read_imagef(triangles,sampler_host,(int2)(0,i)).xyz);
-        if(intersect.isIntersect == false){
-            continue;
+    for(int i = 1;i<=get_image_height(triangles)+1;i++){
+        struct RTI intersect = rayTriangleIntersect(cam,
+        read_imagef(triangles,sampler_host,(float2)(0.5/(float)get_image_width(triangles),((float)i-.999)/(float)get_image_height(triangles))).xyz,
+        read_imagef(triangles,sampler_host,(float2)(1.5/(float)get_image_width(triangles),((float)i-.999)/(float)get_image_height(triangles))).xyz,
+        read_imagef(triangles,sampler_host,(float2)(2.5/(float)get_image_width(triangles),((float)i-.999)/(float)get_image_height(triangles))).xyz
+        );
+        if(intersect.isIntersect){
+            if(D.isIntersect){
+                if(fabs(distance(cam.P,intersect.P))<fabs(distance(cam.P,D.intersectPoint))){
+                    D.isIntersect = true;
+                    D.index = i;
+                    D.intersectPoint = intersect.P;                
+                }          
+            }else {
+                D.isIntersect = true;
+                D.index = i;
+                D.intersectPoint = intersect.P;
+
+            }
         }
-        if(D.intersect == false){
-            D.intersect = true;
-            D.index = i;
-            D.intersectPoint = intersect.P;
-            continue;
-        }
-        if(fast_distance(cam.P,intersect.P)<fast_distance(cam.P,D.intersectPoint)){
-            D.index = i;
-            D.intersectPoint = intersect.P;
-        }
+        // D.isIntersect = true;
     }
+    // D.isIntersect = true;
+    return D;
     }
 
 float3 genNormal(sampler_t sampler_host, struct Data D, read_only image2d_t triangles){
@@ -309,6 +320,7 @@ __kernel void render(
     //h(5).x=roughness
     //h(5).y=fresnel
     //h(5).z=density
+    //h(6)=color
     read_only image2d_t src_image1,
     read_only image2d_t src_image2,
     write_only image2d_t dst_image1,
@@ -323,16 +335,17 @@ __kernel void render(
     float2 j = (float2)(0/get_global_size(0),1.00/get_global_size(1));
     float b = .25;///increse for stronger gpu
     float p = 1.;
-    float noise = clamp(round((.5+half_exp(3-b*time))*hash11(perlin2d(time+get_group_id(0),time+get_group_id(1),.01,2))),0.,1.);
-    float noisefactor = 1;
-    if(noise<0.){return;}
+    // float noise = clamp(round((.5+half_exp(3-b*time))*hash11(perlin2d(time+get_group_id(0),time+get_group_id(1),.01,2))),0.,1.);
+    // if(noise<0.){return;}
     float4 pixel = read_imagef(src_image2, sampler_host,uv);//lastframe
     struct Camera cam;
-    cam.P = (float3)(1.,1.,1.);
-    cam.V = (float3)(-2.,-2.,-2.);
+    cam.P = (float3)(15.,15.,15.);
+    cam.V = (float3)(-sin(.5*time),-cos(.5*time),2.*sin(-2.*time));
     cam.C = (float3)(0.,0.,0.);
-    cam.V = camoffset(cam.V,uv);
-    // struct Data intersect = GlobalIntersect(sampler_host,cam,triangles);
+    cam.P = -15.*cam.V;
+    cam.V = camoffset(2.*normalize(cam.V),uv);
+    cam.V = normalize(cam.V);
+    struct Data intersect = GlobalIntersect(sampler_host,cam,triangles);
     // pixel *= frameintg/(frameintg+p);   
     // float4 noisyimage = read_imagef(src_image1, sampler_host,uv)
     // +noisefactor*(float4)(
@@ -341,18 +354,35 @@ __kernel void render(
     //     (hash11(perlin2d(2.00+time+get_global_id(1),2.00+time+get_global_id(0),.01,20))-.5),1.
     // );
     // pixel += noisyimage*p/(frameintg+p);
-    struct RTI test = rayTriangleIntersect(
-    cam,
-    (float3)(0.,-1.,0.),    
-    (float3)(-1.,0.,0.),    
-    (float3)(0.,0.,0. ));
-    // if(intersect.index<=0){return;;}
-    // pixel = read_imagef(triangles,sampler_host,uvi);
-    // if(pixel.x!=0||pixel.y!=0||pixel.z!=0){
-    //     pixel = (float4)(1.,1.,1.,1.);
+    if(intersect.isIntersect){
+    // pixel = read_imagef(triangles,sampler_host,(float2)(6./get_image_width(triangles),((float)intersect.index)/get_image_height(triangles)));
+    pixel = read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles)));
+    // pixel = (float4)(distance(cam.P.xyz,intersect.intersectPoint)/100.);
+    }else{
+    pixel = (float4)((cam.V.xyz),1.);
+    }
+    // struct RTI test = rayTriangleIntersect(
+    // cam,
+    // (float3)(1.,0.,0.),
+    // (float3)(0.,1.,0.),
+    // (float3)(0.,0.,0.)
+    // );
+    // int inde = (int)((float)(time)/3.);
+    // struct RTI test = rayTriangleIntersect(
+    // cam,
+    // read_imagef(triangles,sampler_host,(float2)(0.5/get_image_width(triangles),((float)inde-.5)/get_image_height(triangles))).xyz,
+    // read_imagef(triangles,sampler_host,(float2)(1.5/get_image_width(triangles),((float)inde-.5)/get_image_height(triangles))).xyz,
+    // read_imagef(triangles,sampler_host,(float2)(2.5/get_image_width(triangles),((float)inde-.5)/get_image_height(triangles))).xyz
+    // );
+
+    // if(test.isIntersect){
+    // pixel = read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)inde-.5)/get_image_height(triangles)));
+    // }else{
+    // pixel = (float4)((cam.V.xyz),1.);
+    // // pixel = (float4)((cam.V.xyz+1)*.5,1.);
     // }
-    pixel = (float)(test.isIntersect);
     // pixel = noise;
+    // pixel = read_imagef(triangles,sampler_host,uvi.xy);
     pixel = (float4)(pixel.xyz,1.);
     write_imagef(dst_image1, coord,pixel);
     }////    
