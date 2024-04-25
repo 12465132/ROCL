@@ -356,12 +356,10 @@ __kernel void render(
         // );
     // pixel += noisyimage*p/(frameintg+p);
     struct Camera cam;
-    cam.P = (float3)(15.,15.,15.);
+    cam.P = (float3)(sin(.5*time),cos(.5*time),-1)*15.;
     cam.V = (float3)(-sin(.5*time),-cos(.5*time),2);
     cam.C = (float3)(0.,0.,0.);
-    cam.P = -15.*cam.V;
-    cam.V = camoffset(normalize(cam.V),uv/2.);
-    cam.V = normalize(cam.V);
+    cam.V = normalize(camoffset(normalize(cam.V),uv));
     struct Data intersect;
     for(int step = 0;step<bouncecount;step++){
     intersect = GlobalIntersect(sampler_host,cam,triangles);
