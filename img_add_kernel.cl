@@ -216,7 +216,7 @@ struct RTI rayTriangleIntersect(
     float3 v0v1 = v1 - v0;
     float3 v0v2 = v2 - v0;
     // no need to normalize
-    float3 N = cross(v0v1,v0v2); // N //TODO! possably bugged
+    float3 N = cross(v0v1,v0v2); // N 
     float denom = dot(N,N);
     
     // Step 1: finding P
@@ -294,8 +294,17 @@ struct Data GlobalIntersect(sampler_t sampler_host, struct Camera cam, read_only
     return D;
     }
 
-float3 genNormal(sampler_t sampler_host, struct Data D, read_only image2d_t triangles){
-    return cross(read_imagef(triangles,sampler_host,(int2)(1,D.index)).xyz-read_imagef(triangles,sampler_host,(int2)(0,D.index)).xyz,read_imagef(triangles,sampler_host,(int2)(0,D.index)).xyz-read_imagef(triangles,sampler_host,(int2)(2,D.index)).xyz);
+float3 genNormal(sampler_t sampler_host, struct Data D,struct Camera C, read_only image2d_t triangles){
+    float3 N = cross(
+        read_imagef(triangles,sampler_host,(float2)(0.5/get_image_width(triangles),((float)D.index-.5)/get_image_height(triangles))).xyz-
+        read_imagef(triangles,sampler_host,(float2)(1.5/get_image_width(triangles),((float)D.index-.5)/get_image_height(triangles))).xyz,
+        read_imagef(triangles,sampler_host,(float2)(2.5/get_image_width(triangles),((float)D.index-.5)/get_image_height(triangles))).xyz-
+        read_imagef(triangles,sampler_host,(float2)(0.5/get_image_width(triangles),((float)D.index-.5)/get_image_height(triangles))).xyz
+        );
+    return fabs(dot(N,C.V))==dot(N,C.V)?-N:N;
+    }
+float3 reflect(float3 N, float3 R){
+    return R-2.*dot(N,R)*N;
     }
 float3 camoffset (float3 v,float2 o){
     return normalize(
@@ -335,52 +344,54 @@ __kernel void render(
     float2 j = (float2)(0/get_global_size(0),1.00/get_global_size(1));
     float b = .25;///increse for stronger gpu
     float p = 1.;
+    float4 pixel;// = read_imagef(src_image2, sampler_host,uv);//lastframe
     // float noise = clamp(round((.5+half_exp(3-b*time))*hash11(perlin2d(time+get_group_id(0),time+get_group_id(1),.01,2))),0.,1.);
-    // if(noise<0.){return;}
-    float4 pixel = read_imagef(src_image2, sampler_host,uv);//lastframe
+        // if(noise<0.){return;}
+            // pixel *= frameintg/(frameintg+p);   
+        // float4 noisyimage = read_imagef(src_image1, sampler_host,uv)
+        // +noisefactor*(float4)(
+        //     (hash11(perlin2d(500.+time+get_global_id(0),100.+time+get_global_id(1),.01,20))-.5),
+        //     (hash11(perlin2d(2.00+time+get_global_id(0),2.00+time+get_global_id(1),.01,20))-.5),
+        //     (hash11(perlin2d(2.00+time+get_global_id(1),2.00+time+get_global_id(0),.01,20))-.5),1.
+        // );
+    // pixel += noisyimage*p/(frameintg+p);
     struct Camera cam;
     cam.P = (float3)(15.,15.,15.);
-    cam.V = (float3)(-sin(.5*time),-cos(.5*time),2.*sin(-2.*time));
+    cam.V = (float3)(-sin(.5*time),-cos(.5*time),2);
     cam.C = (float3)(0.,0.,0.);
     cam.P = -15.*cam.V;
-    cam.V = camoffset(2.*normalize(cam.V),uv);
+    cam.V = camoffset(normalize(cam.V),uv/2.);
     cam.V = normalize(cam.V);
-    struct Data intersect = GlobalIntersect(sampler_host,cam,triangles);
-    // pixel *= frameintg/(frameintg+p);   
-    // float4 noisyimage = read_imagef(src_image1, sampler_host,uv)
-    // +noisefactor*(float4)(
-    //     (hash11(perlin2d(500.+time+get_global_id(0),100.+time+get_global_id(1),.01,20))-.5),
-    //     (hash11(perlin2d(2.00+time+get_global_id(0),2.00+time+get_global_id(1),.01,20))-.5),
-    //     (hash11(perlin2d(2.00+time+get_global_id(1),2.00+time+get_global_id(0),.01,20))-.5),1.
-    // );
-    // pixel += noisyimage*p/(frameintg+p);
+    struct Data intersect;
+    for(int step = 0;step<bouncecount;step++){
+    intersect = GlobalIntersect(sampler_host,cam,triangles);
     if(intersect.isIntersect){
-    // pixel = read_imagef(triangles,sampler_host,(float2)(6./get_image_width(triangles),((float)intersect.index)/get_image_height(triangles)));
-    pixel = read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles)));
+    cam.P = intersect.intersectPoint;
+    cam.P += .0000001*genNormal(sampler_host,intersect,cam,triangles);
+    cam.V = reflect(normalize(genNormal(sampler_host,intersect,cam,triangles)),normalize(cam.V));
+    pixel = (float4)((cam.V.xyz+1.)*.5,1.);
     // pixel = (float4)(distance(cam.P.xyz,intersect.intersectPoint)/100.);
     }else{
-    pixel = (float4)((cam.V.xyz),1.);
+    pixel = (float4)((cam.V.xyz+1.)*.5,1.);
+    break;
     }
-    // struct RTI test = rayTriangleIntersect(
-    // cam,
-    // (float3)(1.,0.,0.),
-    // (float3)(0.,1.,0.),
-    // (float3)(0.,0.,0.)
-    // );
-    // int inde = (int)((float)(time)/3.);
-    // struct RTI test = rayTriangleIntersect(
-    // cam,
-    // read_imagef(triangles,sampler_host,(float2)(0.5/get_image_width(triangles),((float)inde-.5)/get_image_height(triangles))).xyz,
-    // read_imagef(triangles,sampler_host,(float2)(1.5/get_image_width(triangles),((float)inde-.5)/get_image_height(triangles))).xyz,
-    // read_imagef(triangles,sampler_host,(float2)(2.5/get_image_width(triangles),((float)inde-.5)/get_image_height(triangles))).xyz
-    // );
+    }
 
-    // if(test.isIntersect){
-    // pixel = read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)inde-.5)/get_image_height(triangles)));
-    // }else{
-    // pixel = (float4)((cam.V.xyz),1.);
-    // // pixel = (float4)((cam.V.xyz+1)*.5,1.);
-    // }
+//
+
+    // int inde = (int)((float)(time)/3.);
+        // struct RTI test = rayTriangleIntersect(
+        // cam,
+        // read_imagef(triangles,sampler_host,(float2)(0.5/get_image_width(triangles),((float)inde-.5)/get_image_height(triangles))).xyz,
+        // read_imagef(triangles,sampler_host,(float2)(1.5/get_image_width(triangles),((float)inde-.5)/get_image_height(triangles))).xyz,
+        // read_imagef(triangles,sampler_host,(float2)(2.5/get_image_width(triangles),((float)inde-.5)/get_image_height(triangles))).xyz
+        // );
+        // if(test.isIntersect){
+        // pixel = read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)inde-.5)/get_image_height(triangles)));
+        // }else{
+        // pixel = (float4)((cam.V.xyz),1.);
+        // // pixel = (float4)((cam.V.xyz+1)*.5,1.);
+        // }
     // pixel = noise;
     // pixel = read_imagef(triangles,sampler_host,uvi.xy);
     pixel = (float4)(pixel.xyz,1.);
