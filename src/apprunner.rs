@@ -42,7 +42,7 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
         let mut frames = 0;
         let mut loops = 0;
         let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
-        let world = std::sync::Arc::new(std::sync::Mutex::new(myapp::MyApp::new(pixels,file_path,image.clone(),xtotal,ytotal,5)));
+        let world = std::sync::Arc::new(std::sync::Mutex::new(myapp::MyApp::new(pixels,file_path,"default.jpg".to_string().clone(),xtotal,ytotal,5)));
         let c2 = std::sync::Arc::clone(&barrier);
         let defaultL = 
         myapp::L{
@@ -106,7 +106,7 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             let worldt = std::sync::Arc::clone(&world);
             std::thread::spawn(move || {
                 // let imaget = image.clone();
-                worldt.lock().unwrap().src_img1.write(&image::io::Reader::open("default.jpg".to_string()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
+                worldt.lock().unwrap().src_img1.write(&image::io::Reader::open("oclt.png".to_string()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
                 worldt.lock().unwrap().src_img2.write(&image::io::Reader::open("default.jpg".to_string()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
                 worldt.lock().unwrap().src_img1.write(&image::io::Reader::open(image.clone()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
 
