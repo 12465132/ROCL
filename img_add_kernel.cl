@@ -7,7 +7,7 @@ __constant float ERR =.00000001;
 __constant int //performace <-> precision
     RenderDistance 		= 100,
     stepcount 			= 70,
-    bouncecount 		= 4;
+    bouncecount 		= 8;
 
 __constant int hash[] = {208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,254,245,255,247,247,40,
                      185,248,251,245,28,124,204,204,76,36,1,107,28,234,163,202,224,245,128,167,204,
@@ -119,7 +119,12 @@ float hash11(float q)
 			  dot(p,(float3)(113.5,271.9,124.6)));
     float3 a = 0;
 	return fract(sin(p)*43758.5453123,&a).x;
-  
+    }
+float frand( int seed )
+    {
+    int seed2 = 0x00269ec3 + (seed)*0x000343fd;
+    int a = ((seed2)>>16) & 32767;
+    return -1.0f + (2.0f/32767.0f)*(float)a;
     }
 //comments
     // struct L {
@@ -337,46 +342,73 @@ __kernel void render(
     int frameintg,
     float time
 ){
+
     int2 coord = (int2)(get_global_id(0),get_global_id(1));
+    float2 uvinput = (float2)(((float)get_global_id(0)+.001)/(float)(get_global_size(0)),((float)get_global_id(1)+.001)/(float)get_global_size(1));
     float2 uvi = (float2)(((float)get_global_id(0)+.001)/(float)(get_global_size(0)),((float)get_global_id(1)+.001)/(float)get_global_size(0));
-    float2 uv = 2*uvi-1.;
+    float2 uv = 2.*uvi-1.;
     float2 i = (float2)(1.00/get_global_size(0),0/get_global_size(1));
     float2 j = (float2)(0/get_global_size(0),1.00/get_global_size(1));
     float b = .25;///increse for stronger gpu
     float p = 1.;
-    float4 pixel;// = read_imagef(src_image2, sampler_host,uv);//lastframe
-    // float noise = clamp(round((.5+half_exp(3-b*time))*hash11(perlin2d(time+get_group_id(0),time+get_group_id(1),.01,2))),0.,1.);
+    float ps = .9;
+    float3 mean = 0.0;
+    float3 M2 = 0.0;
+        // n = montyC
+    float4 pixel = read_imagef(src_image1, sampler_host,uvinput)*(float)frameintg/((float)frameintg+p);//lastframe
+    float4 pixelMC;// = read_imagef(src_image1, sampler_host,uvinput)*ps;//*(float)frameintg/((float)frameintg+p);//lastframe
+    float noise = (float)(time+get_global_id(0)+get_global_size(1)*get_global_id(1))/(get_global_size(1)*get_global_size(0)+time);// = clamp(round((.5+half_exp(3-b*time))*hash11(perlin2d(time+get_group_id(0),time+get_group_id(1),.01,2))),0.,1.);
         // if(noise<0.){return;}
-            // pixel *= frameintg/(frameintg+p);   
-        // float4 noisyimage = read_imagef(src_image1, sampler_host,uv)
-        // +noisefactor*(float4)(
-        //     (hash11(perlin2d(500.+time+get_global_id(0),100.+time+get_global_id(1),.01,20))-.5),
-        //     (hash11(perlin2d(2.00+time+get_global_id(0),2.00+time+get_global_id(1),.01,20))-.5),
-        //     (hash11(perlin2d(2.00+time+get_global_id(1),2.00+time+get_global_id(0),.01,20))-.5),1.
-        // );
-    // pixel += noisyimage*p/(frameintg+p);
+    // pixel *= ;   
+    for(int montyC = 0;montyC < 30;montyC++){
+
+    // noise = (.5+half_exp(3-b*time))*frand((int)(1000*perlin2d(time+get_global_id(0)+montyC,time+get_global_id(1)-montyC,.01,2)));
+    // noise = frand(noise);
     struct Camera cam;
-    cam.P = (float3)(sin(.5*time),cos(.5*time),-1)*15.;
-    cam.V = (float3)(-sin(.5*time),-cos(.5*time),2);
-    cam.C = (float3)(0.,0.,0.);
-    cam.V = normalize(camoffset(normalize(cam.V),uv));
     struct Data intersect;
+    cam.P = (float3)(sin(M_PI)*15,cos(M_PI)*15,4);
+    cam.V = (float3)(-sin(M_PI),-cos(M_PI),0);
+    cam.V = normalize(camoffset(normalize(cam.V),uv));
+    // cam.C = cam.V;
+    cam.C = (float3)(0.);
+
     for(int step = 0;step<bouncecount;step++){
     intersect = GlobalIntersect(sampler_host,cam,triangles);
     if(intersect.isIntersect){
+
     cam.P = intersect.intersectPoint;
     cam.P += .0000001*genNormal(sampler_host,intersect,cam,triangles);
     cam.V = reflect(normalize(genNormal(sampler_host,intersect,cam,triangles)),normalize(cam.V));
-    pixel = (float4)((cam.V.xyz+1.)*.5,1.);
+    cam.V += .1*((float3)(
+        hash11(noise+.001),
+        hash11(noise+.002),
+        hash11(noise+.003)));
+    // cam.V += clamp(hash11(noise),-1.,1.);
+    // cam.C = (float4)(dot(normalize(cam.V.xyz),normalize((float3)(-1.))));
+    cam.C += read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz;
+    cam.C *= .5;
+    cam.C += exp(-read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).x)*.1*(float3)(dot(normalize(cam.V.xyz),normalize((float3)(0,-1,0))));
+\
     // pixel = (float4)(distance(cam.P.xyz,intersect.intersectPoint)/100.);
     }else{
-    pixel = (float4)((cam.V.xyz+1.)*.5,1.);
+    cam.P = intersect.intersectPoint;
+    cam.P += .0000001*genNormal(sampler_host,intersect,cam,triangles);
+    cam.V = reflect(normalize(genNormal(sampler_host,intersect,cam,triangles)),normalize(cam.V));
+    // cam.C *= cam.V;
+    // pixel = (float4)(cam.V.xyz,1.);
+    // cam.C += (float3)(dot(normalize(cam.V.xyz),normalize((float3)(0,1,0))));
     break;
     }
     }
-
-//
-
+    pixelMC *= (float)montyC/((float)montyC+p);
+    pixelMC += (float4)(cam.C,1.)*p/((float)montyC+p);
+    // mean += (cam.C - mean)/montyC;
+    // M2 += (cam.C - mean)*(cam.C - mean);
+    // if(montyC>10.){if(length(M2 / (montyC - 1))<=1.){break;}}
+    // if(!intersect.isIntersect){break;}
+    }
+    // pixel *= (float)frameintg/((float)frameintg+p);
+    pixel += (float4)(pixelMC.xyz,1.)*p/((float)frameintg+p);
     // int inde = (int)((float)(time)/3.);
         // struct RTI test = rayTriangleIntersect(
         // cam,

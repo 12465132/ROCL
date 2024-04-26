@@ -39,11 +39,6 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             let surface_texture = ::pixels::SurfaceTexture::new(window_size.width, window_size.height, &window);
             pixels::Pixels::new(xtotal.try_into().unwrap(), ytotal.try_into().unwrap(), surface_texture)?
         };
-        let mut frames = 0;
-        let mut loops = 0;
-        let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
-        let world = std::sync::Arc::new(std::sync::Mutex::new(myapp::MyApp::new(pixels,file_path,"default.jpg".to_string().clone(),xtotal,ytotal,5)));
-        let c2 = std::sync::Arc::clone(&barrier);
         let defaultL = 
         myapp::L{
             color:[0.5,0.5,0.5],
@@ -57,12 +52,12 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
         let mut triangles = 
         vec![
         myapp::triangle{
-            p1:[-10.,0.,-2.],
-            p2:[0.,10.,-2.],    
-            p3:[0.,0.,3.],  
+            p1:[5.,5.,-5.],
+            p2:[-5.,-5.,-5.],    
+            p3:[-5.,5.,-5.],  
             R:0.01,  
             L:myapp::L { 
-                color: [1.0,0.5,1.0], 
+                color: [0.75,0.75,0.75], 
                 reflection: true, 
                 refraction: false, 
                 n: 0., 
@@ -72,12 +67,12 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             },
         },
         myapp::triangle{
-            p1:[10.,0.,-2.],
-            p2:[0.,-10.,-2.],    
-            p3:[0.,0.,3.],  
+            p1:[5.,5.,-5.],
+            p2:[-5.,-5.,-5.],    
+            p3:[5.,-5.,-5.],  
             R:0.01,  
             L:myapp::L { 
-                color: [0.5,1.0,1.0], 
+                color: [0.75,0.75,0.75], 
                 reflection: true, 
                 refraction: false, 
                 n: 0., 
@@ -87,12 +82,12 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             },
         },
         myapp::triangle{
-            p1:[0.,-10.,-2.],
-            p2:[-10.,0.,-2.],    
-            p3:[0.,0.,3.],  
+            p1:[5.,5.,5.],
+            p2:[-5.,-5.,5.],    
+            p3:[-5.,5.,5.],  
             R:0.01,  
             L:myapp::L { 
-                color: [1.0,1.0,0.5], 
+                color: [0.75,0.75,0.75], 
                 reflection: true, 
                 refraction: false, 
                 n: 0., 
@@ -102,12 +97,102 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             },
         },
         myapp::triangle{
-            p1:[0.,10.,-2.],
-            p2:[10.,0.,-2.],    
-            p3:[0.,0.,3.],  
+            p1:[5.,5.,5.],
+            p2:[-5.,-5.,5.],    
+            p3:[5.,-5.,5.], 
             R:0.01,  
             L:myapp::L { 
-                color: [1.0,1.0,1.0], 
+                color: [0.75,0.75,0.75], 
+                reflection: true, 
+                refraction: false, 
+                n: 0., 
+                roughness: 0., 
+                fresnel: 0., 
+                density: 0. 
+            },
+        },
+        myapp::triangle{
+            p1:[-5.,5.,5.],
+            p2:[-5.,-5.,-5.],     
+            p3:[-5.,5.,-5.],  
+            R:0.01,  
+            L:myapp::L { 
+                color: [0.,1.,0.], 
+                reflection: true, 
+                refraction: false, 
+                n: 0., 
+                roughness: 1., 
+                fresnel: 0., 
+                density: 0. 
+            },
+        },
+        myapp::triangle{
+            p1:[-5.,5.,5.],
+            p2:[-5.,-5.,-5.],    
+            p3:[-5.,-5.,5.], 
+            R:0.01,  
+            L:myapp::L { 
+                color: [0.,1.,0.], 
+                reflection: true, 
+                refraction: false, 
+                n: 0., 
+                roughness: 1., 
+                fresnel: 0., 
+                density: 0. 
+            },
+        },
+        myapp::triangle{
+            p1:[5.,5.,5.],
+            p2:[5.,-5.,-5.],    
+            p3:[5.,5.,-5.],  
+            R:0.01,  
+            L:myapp::L { 
+                color: [1.,0.,0.], 
+                reflection: true, 
+                refraction: false, 
+                n: 0., 
+                roughness: 1., 
+                fresnel: 0., 
+                density: 0. 
+            },
+        },
+        myapp::triangle{
+            p1:[5.,5.,5.],
+            p2:[5.,-5.,-5.],
+            p3:[5.,-5.,5.], 
+            R:0.01,  
+            L:myapp::L { 
+                color: [1.,0.,0.], 
+                reflection: true, 
+                refraction: false, 
+                n: 0., 
+                roughness: 1., 
+                fresnel: 0., 
+                density: 0. 
+            },
+        },
+        myapp::triangle{
+            p1:[5.,5.,5.],
+            p2:[-5.,5.,-5.],
+            p3:[5.,5.,-5.], 
+            R:0.01,  
+            L:myapp::L { 
+                color: [0.75,0.75,0.75], 
+                reflection: true, 
+                refraction: false, 
+                n: 0., 
+                roughness: 0., 
+                fresnel: 0., 
+                density: 0. 
+            },
+        },
+        myapp::triangle{
+            p1:[5.,5.,5.],
+            p2:[-5.,5.,-5.],
+            p3:[-5.,5.,5.], 
+            R:0.01,  
+            L:myapp::L { 
+                color: [0.75,0.75,0.75], 
                 reflection: true, 
                 refraction: false, 
                 n: 0., 
@@ -118,8 +203,8 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
         },
         myapp::triangle{
             p1:[4.,4.,-3.],
-            p2:[2.,-3.,-3.],    
-            p3:[4.,2.,3.],  
+            p2:[2.,-3.,3.],    
+            p3:[4.,2.,-3.],  
             R:0.01,  
             L:myapp::L { 
                 color: [0.5,0.7,0.5], 
@@ -132,6 +217,12 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             },
         },
         ];
+        let mut frames = 0;
+        let mut loops = 0;
+        let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
+        let world = std::sync::Arc::new(std::sync::Mutex::new(myapp::MyApp::new(pixels,file_path,"default.jpg".to_string().clone(),xtotal,ytotal,triangles.len())));
+        let c2 = std::sync::Arc::clone(&barrier);
+        
         world.lock().unwrap().loadtriangles(triangles);
         let _render_thread = {
             let c1 = std::sync::Arc::clone(&barrier);
@@ -139,14 +230,16 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             std::thread::spawn(move || {
                 // let imaget = image.clone();
                 worldt.lock().unwrap().src_img1.write(&image::io::Reader::open("oclt.png".to_string()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
-                worldt.lock().unwrap().src_img2.write(&image::io::Reader::open("default.jpg".to_string()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
-                worldt.lock().unwrap().src_img1.write(&image::io::Reader::open(image.clone()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
+                worldt.lock().unwrap().src_img2.write(&image::io::Reader::open("oclt.png".to_string()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
+                // worldt.lock().unwrap().src_img1.write(&image::io::Reader::open(image.clone()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
 
             loop {
                 c1.wait();
                 let mut worldlocked = worldt.lock().unwrap();                    
                 worldlocked.render("render".to_string()).update();
-                worldlocked.dst_img1.cmd().copy(&worldlocked.src_img2, [0, 0, 0]).enq().unwrap();
+                // worldlocked.dst_img1.cmd().copy(&worldlocked.dst_img1, [0, 0, 0]).enq().unwrap();
+                worldlocked.dst_img1.cmd().copy(&worldlocked.src_img1, [0, 0, 0]).enq().unwrap();
+                // worldlocked
             }
             })
         };
@@ -161,7 +254,6 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 frames+=1;
                 if let Err(err) = world.lock().unwrap().raw_img.render() {
                     control_flow.exit();
-
                     return;
                 }
                 c2.wait();
