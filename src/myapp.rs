@@ -222,10 +222,10 @@ impl MyApp {
                 b[6*4*i+22]= triangle.L.color[2]; 
                 b[6*4*i+23]= 1.; 
                 match (triangle.L.reflection,triangle.L.refraction){    //h(4).z=conditional
-                    (false,false)=>b[6*4*i+15]=1.,                          //(h(4).z=1) when ((reflection==false) &&(refraction==false))
-                    (false,true)=> b[6*4*i+15]=2.,                           //(h(4).z=2) when ((reflection==false) &&(refraction==true ))
-                    (true,false)=> b[6*4*i+15]=3.,                           //(h(4).z=3) when ((reflection==true ) &&(refraction==false))
-                    (true,true)=>  b[6*4*i+15]=4.,                            //(h(4).z=4) when ((reflection==true ) &&(refraction==true ))
+                    (false,false)=>b[6*4*i+14]=1., //(h(4).z=1) when ((reflection==false) &&(refraction==false))
+                    (false,true)=> b[6*4*i+14]=2., //(h(4).z=2) when ((reflection==false) &&(refraction==true ))
+                    (true,false)=> b[6*4*i+14]=3., //(h(4).z=3) when ((reflection==true ) &&(refraction==false))
+                    (true,true)=>  b[6*4*i+14]=4., //(h(4).z=4) when ((reflection==true ) &&(refraction==true ))
                     _=>return self}                              //h(5).z=color.z
             }
             self.triangles.write(b).enq().unwrap();
