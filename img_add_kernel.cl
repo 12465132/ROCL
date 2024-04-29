@@ -7,7 +7,7 @@ __constant float ERR =.00000001;
 __constant int //performace <-> precision
     RenderDistance 		= 100,
     stepcount 			= 70,
-    bouncecount 		= 10;
+    bouncecount 		= 5;
 
 __constant int hash[] = {208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,254,245,255,247,247,40,
                      185,248,251,245,28,124,204,204,76,36,1,107,28,234,163,202,224,245,128,167,204,
@@ -315,8 +315,7 @@ float3 reflect(float3 N, float3 R){
     return R-2.*dot(N,R)*N;
     }
 float3 camoffset (float3 v,float2 o){
-    return normalize(
-        (float3)(v.x,v.y,v.z))+
+    return normalize(v)+
         normalize((float3)(-(v.y),(v.x),0.))*
         o.x+normalize((float3)(-v.z*v.x,-v.z*v.y,v.x*v.x+v.y*v.y))*o.y;
     }
@@ -373,17 +372,17 @@ __kernel void render(
     // noise = frand(noise);
     struct Camera cam;
     struct Data intersect;
-    cam.P = (float3)(pow( sin(M_PI),3) *15,
-                     pow( cos(M_PI),3) *15,4);
-    cam.V = (float3)(pow(-sin(M_PI),3) ,
-                     pow(-cos(M_PI),3) ,0);
+    cam.P = (float3)(pow( sin(M_PI),1)*15 ,
+                     pow( cos(M_PI),1)*15 ,4);
+    cam.V = (float3)(pow(-sin(M_PI),1)*15 ,
+                     pow(-cos(M_PI),1)*15 ,0);
     cam.V = normalize(camoffset(normalize(cam.V),uv));
     // cam.C = cam.V;
     cam.C = (float3)(0.);
     int step = 0;
     for(step = 0;step<bouncecount;step++){
     intersect = GlobalIntersect(sampler_host,cam,triangles);
-    if(!intersect.isIntersect){break;}
+    if(!intersect.isIntersect){cam.C = 0;break;}
     // RandomV = spherical_to_cartesian((float3)(
     //     2.*M_PI*hash11(noise+1)-M_PI,
     //     2.*M_PI*hash11(noise+2)-M_PI,
