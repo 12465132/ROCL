@@ -314,10 +314,6 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 worldlocked.render("render".to_string()).update();
                 // worldlocked.dst_img1.cmd().copy(&worldlocked.dst_img1, [0, 0, 0]).enq().unwrap();
                 worldlocked.dst_img1.cmd().copy(&worldlocked.src_img1, [0, 0, 0]).enq().unwrap();
-                // if worldlocked.frameintg >= 1024{
-                //     worldlocked.save("ROCL.PNG".to_string());
-                //     todo!()
-                // }
                 // worldlocked
             }
             })
@@ -337,6 +333,19 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 }
                 c2.wait();
             }
+            // if let Event::UserEvent(val) = event {
+            //     // let mut a = pixels.frame_mut();
+            //     // a = world.draw().as_mut_slice();
+            //     c2.wait();
+            //     world.lock().unwrap().draw(pixels.frame_mut());
+            //     frames+=1;
+            //     if let Err(err) = pixels.render() {
+            //         log_error("pixels.render", err);
+            //         *control_flow = ControlFlow::Exit;
+            //         return;
+            //     }
+            //     // c2.wait();
+            // }
     
             // Handle input events
             if input.update(&event) {
