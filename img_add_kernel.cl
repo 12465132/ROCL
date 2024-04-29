@@ -1,13 +1,13 @@
 
 // #define MOLLER_TRUMBORE
-// #define CULLING
+#define CULLING
 
 __constant int SEED = 0;
-__constant float ERR =.00000001;
+__constant float ERR =.000001;
 __constant int //performace <-> precision
     RenderDistance 		= 100,
-    stepcount 			= 70,
-    bouncecount 		= 5;
+    Montycarlo 			= 10,
+    bouncecount 		= 6;
 
 __constant int hash[] = {208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,254,245,255,247,247,40,
                      185,248,251,245,28,124,204,204,76,36,1,107,28,234,163,202,224,245,128,167,204,
@@ -56,7 +56,10 @@ int noise2(int x, int y)
     int tmp = hash[(y + SEED) % 256];
     return hash[(tmp + x) % 256];
     }
-
+int noise1(int x)
+    {
+    return hash[(SEED + x) % 256];
+    }
 float lin_inter(float x, float y, float s)
     {
     return x + s * (y-x);
@@ -81,7 +84,14 @@ float noise2d(float x, float y)
     float high = smooth_inter(u, v, x_frac);
     return smooth_inter(low, high, y_frac);
     }
-
+float noise1d(float x)
+    {
+    int x_int = x;
+    float x_frac = x - x_int;
+    int s = noise1(x_int);
+    int t = noise1(x_int+1);
+    return smooth_inter(s, t, x_frac);
+    }
 float perlin2d(float x, float y, float freq, int depth)
     {
     float xa = x*freq;
@@ -102,23 +112,29 @@ float perlin2d(float x, float y, float freq, int depth)
 
     return fin/div;
     }
-
-float3 hash33( float3 p )      // this hash is not production ready, please
-    {                        // replace this by something better
-	p = (float3)( dot(p,(float3)(127.1,311.7, 74.7)),
-			  dot(p,(float3)(269.5,183.3,246.1)),
-			  dot(p,(float3)(113.5,271.9,124.6)));
-    float3 a = 0;
-	return -1.0 + 2.0*fract(sin(p)*43758.5453123,&a);
-    }
-float hash11(float q)
+float perlin1d(float x, float freq, int depth)
     {
-    float3 p = (float3)(q);
-  	p = (float3)( dot(p,(float3)(127.1,311.7, 74.7)),
-			  dot(p,(float3)(269.5,183.3,246.1)),
-			  dot(p,(float3)(113.5,271.9,124.6)));
-    float3 a = 0;
-	return fract(sin(p)*43758.5453123,&a).x;
+    float xa = x*freq;
+    float amp = 1.0;
+    float fin = 0;
+    float div = 0.0;
+
+    int i;
+    for(i=0; i<depth; i++)
+    {
+        div += 256 * amp;
+        fin += noise1d(xa) * amp;
+        amp /= 2;
+        xa *= 2;
+    }
+
+    return fin/div;
+    }
+// float3 hash33( float3 p )      // this hash is not production ready, please
+//     {                        // replace this by something better
+float hash21(float x,float y)
+    {
+	return perlin2d((x),(y),.1,6);;
     }
 float frand( int seed )
     {
@@ -128,7 +144,7 @@ float frand( int seed )
     }
 float3 spherical_to_cartesian(float3 v){
     return (float3)(v.x*cos(v.y)*sin(v.z),v.x*sin(v.y)*sin(v.z),v.x*cos(v.z)) ;
-}
+    }
 //comments
     // struct L {
     // 	float3  color;		// diffuse color
@@ -363,54 +379,72 @@ __kernel void render(
     float noise;//  = clamp(round((.5+half_exp(3-b))*hash11(perlin2d(time+get_group_id(0),time+get_group_id(1),.01,2))),0.,1.);
     // if(noise>.5){pixel = (float4)(.0);write_imagef(dst_image1, coord,pixel);return;}
     // noise = (float)(time*1000+get_global_id(0)+get_global_size(1)*get_global_id(1))/(get_global_size(1)*get_global_size(0)+1000*time);// = clamp(round((.5+half_exp(3-b*time))*hash11(perlin2d(time+get_group_id(0),time+get_group_id(1),.01,2))),0.,1.);
-    noise = perlin2d(time*1000+get_global_id(0)+get_global_size(1)*get_global_id(1),time*1000+get_global_id(1)+get_global_size(0)*get_global_id(0),1.,4);
-    pixel = read_imagef(src_image1, sampler_host,uvinput)*(float)frameintg/((float)frameintg+p);//lastframe
+    // noise = perlin2d(time*1000+get_global_id(0)+get_global_size(1)*get_global_id(1),time*1000+get_global_id(1)+get_global_size(0)*get_global_id(0),1.,4);
+    // noise =  perlin2d((1000.*(cos(time*M_PI)+1)+get_global_id(1)),(1000.*(sin(time*M_PI)+1)+get_global_id(0)),.1,6);
+    //lastframe
     // pixel = pow( pixel, 1/0.45 );
-    for(int montyC = 0;montyC < 30;montyC++){
-
-    // noise = (.5+half_exp(3-b*time))*frand((int)(1000*perlin2d(time+get_global_id(0)+montyC,time+get_global_id(1)-montyC,.01,2)));
-    // noise = frand(noise);
     struct Camera cam;
     struct Data intersect;
+    bool hasHitLight = false;
+    int failedpath = 0;
+    for(int montyC = 0;montyC < Montycarlo+failedpath;montyC++){
+    hasHitLight = false;
+    // noise = (.5+half_exp(3-b*time))*frand((int)(1000*perlin2d(time+get_global_id(0)+montyC,time+get_global_id(1)-montyC,.01,2)));
+    // noise = frand(noise);
+
     cam.P = (float3)(pow( sin(M_PI),1)*15 ,
-                     pow( cos(M_PI),1)*15 ,4);
+                     pow( cos(M_PI),1)*15 ,-4);
     cam.V = (float3)(pow(-sin(M_PI),1)*15 ,
                      pow(-cos(M_PI),1)*15 ,0);
-    cam.V = normalize(camoffset(normalize(cam.V),uv));
+    cam.V = normalize(camoffset(normalize(cam.V),-uv));
     // cam.C = cam.V;
-    cam.C = (float3)(0.);
-    int step = 0;
-    for(step = 0;step<bouncecount;step++){
+    cam.C = (float3)(1.);
+    int stepn = 0;
+    for(stepn = 0;stepn<bouncecount;stepn++){
     intersect = GlobalIntersect(sampler_host,cam,triangles);
-    if(!intersect.isIntersect){cam.C = 0;break;}
+    if(!intersect.isIntersect){break;}
     // RandomV = spherical_to_cartesian((float3)(
     //     2.*M_PI*hash11(noise+1)-M_PI,
     //     2.*M_PI*hash11(noise+2)-M_PI,
     //     1.));
     RandomV2 = read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).x
-        *spherical_to_cartesian((float3)(
-        2.*M_PI*hash11(noise+3)-M_PI,
-        2.*M_PI*hash11(noise+4)-M_PI,
-        1.));;
+        *((float3)(
+        2.*clamp(hash21( 100.*(100.*(cos(time+1+stepn+bouncecount*montyC)+1)+10+get_global_id(1)),100.*(100.*(sin(time+1+stepn+bouncecount*montyC)+1)+20+get_global_id(0))),0.,1.)-1.,
+        2.*clamp(hash21( 100.*(100.*(cos(time+1+stepn+bouncecount*montyC)+1)+30+get_global_id(1)),100.*(100.*(sin(time+1+stepn+bouncecount*montyC)+1)+40+get_global_id(0))),0.,1.)-1.,
+        2.*clamp(hash21( 100.*(100.*(cos(time+1+stepn+bouncecount*montyC)+1)+50+get_global_id(1)),100.*(100.*(sin(time+1+stepn+bouncecount*montyC)+1)+60+get_global_id(0))),0.,1.)-1.));;
+        // spherical_to_cartesian((float3)(
+        // 2.*M_1_PI*hash21( 1000.*(1000.*(cos(time*M_PI)+1+step+100)+get_global_id(1)),1000.*(1000.*(sin(time*M_PI)+1+step+200)+get_global_id(0)))-1.*M_1_PI,
+        // 2.*M_1_PI*hash21( 1000.*(1000.*(cos(time*M_PI)+1+step+300)+get_global_id(1)),1000.*(1000.*(sin(time*M_PI)+1+step+400)+get_global_id(0)))-1.*M_1_PI,
+        // 1.));;
+    // RandomV2 = 0;
+    
     // RandomV = (0.>dot(-genNormal(sampler_host,intersect,cam,triangles),RandomV))?-RandomV:RandomV;
     // RandomV2 = (0.>dot(genNormal(sampler_host,intersect,cam,triangles),RandomV2))?-RandomV2:RandomV2;
     // cam.V =(0.>dot(N,RandomV))?RandomV:-RandomV;
     // cam.V += clamp(hash11(noise),-1.,1.);
     // cam.C += 100*(float3)(dot(N,cam.P-intersect.intersectPoint)*dot(normalize(cam.V.xyz),normalize((float3)(1,1,0))));
     
-    cam.C = 
+
+    // cam.C = (cam.C+1)*(1+read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz)-1;
+    // cam.C = (cam.C+1./(stepn+1))*.5*(read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz);
+    if(sqrt(3.)<length(read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz))
+    {hasHitLight = true;}
+    cam.C *= 
+    // dot(normalize(-cam.V),)*
+    (read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz);
+    // cam.C = (1+ca)(read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz);
     // (step>1?1-dot(normalize(cam.V),normalize(-N)):1-dot(normalize(cam.V),normalize(-genNormal(sampler_host,intersect,cam,triangles))))*
     // (1-dot(normalize(cam.V),normalize(-genNormal(sampler_host,intersect,cam,triangles))))*
-    .5*(cam.C+1)*(read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz);
     ///(step<1?pown(distance(cam.P,intersect.intersectPoint),2):1);
     if(3.>read_imagef(triangles,sampler_host,(float2)(3.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).z){break;}
     N = genNormal(sampler_host,intersect,cam,triangles);
     N = (0.<=dot(-N,cam.V))?N:-N;
-    cam.V = RandomV2+reflect(normalize(genNormal(sampler_host,intersect,cam,triangles)),normalize(cam.V));
+    cam.V = RandomV2+(reflect(normalize(genNormal(sampler_host,intersect,cam,triangles)),normalize(cam.V)));
     cam.V = (0.>dot(cam.V,N)?-cam.V:cam.V);
+    
     // cam.V = normalize(cam.V);
     cam.P = intersect.intersectPoint;
-    cam.P += .00001*N;
+    cam.P += .00001*normalize(N);
 
     // pixel = (float4)(distance(cam.P.xyz,intersect.intersectPoint)/100.);
     // }else{
@@ -432,15 +466,33 @@ __kernel void render(
     // }
     }
     // cam.C /=(M_PI*M_PI/6);
-    cam.C /=(step+1.);
-    pixelMC *= (float)montyC/((float)montyC+p);
-    pixelMC += (float4)(cam.C,1.)*p/((float)montyC+p);
+    // cam.C /=(step+1.);
+    // cam.C /=(step+1.);
+    // cam.C /=(step+1.);
+    // if(intersect.isIntersect&&bouncecount<=stepn) {
+    // cam.C=0;
+    // }
+    // if(intersect.isIntersect&&bouncecount<=stepn) {
+    // cam.C=0;
+    // }
+    if(!intersect.isIntersect&&bouncecount>stepn) {
+    cam.C=0;
+    // failedpath++;
+    }
+    if(!hasHitLight) {cam.C=0;}
+    pixelMC *= (float)(montyC-failedpath)/((float)montyC-failedpath+p);
+    pixelMC += (float4)(cam.C,1.)*p/((float)montyC-failedpath+p);
     // mean += (cam.C - mean)/montyC;
     // M2 += (cam.C - mean)*(cam.C - mean);
     // if(montyC>10.){if(length(M2 / (montyC - 1))<=1.){break;}}
-    // if(!intersect.isIntersect){break;}
     }
-    pixel += (float4)(pixelMC.xyz,1.)*p/((float)frameintg+p);
+
+    pixel = read_imagef(src_image1, sampler_host,uvinput);
+    // if(intersect.isIntersect==true){pixel *= (float)frameintg/((float)frameintg+p);pixel += (float4)(pixelMC.xyz,1.)*p/((float)frameintg+p);}
+    // if(true==true){pixel *= (float)frameintg/((float)frameintg+p);pixel += (float4)(pixelMC.xyz,1.)*p/((float)frameintg+p);}
+    if(true==true){pixel *= (float)frameintg/((float)frameintg+p);pixel += (float4)(pow( pixelMC.xyz, 0.45 ),1.)*p/((float)frameintg+p);}
+    // if(intersect.isIntersect==true){pixel *= (1-p);pixel += (float4)(pixelMC.xyz,1.)*p;}
+    // if(true==true){pixel = (float4)(pixelMC.xyz,1.);}
     // pixel = (float4)(pixelMC.xyz,1.);
     // int inde = (int)((float)(time)/3.);
         // struct RTI test = rayTriangleIntersect(
@@ -455,13 +507,15 @@ __kernel void render(
         // pixel = (float4)((cam.V.xyz),1.);
         // // pixel = (float4)((cam.V.xyz+1)*.5,1.);
         // }
-    // pixel = 
-    // pixel = read_imagef(triangles,sampler_host,uvi.xy);
+    // pixel = hash11(hash11(pixel.x));
+    // pixel = hash11(1000000*(time+get_global_id(1)+get_global_id(0)*get_global_size(1))/(get_global_size(1)*get_global_size(0)*(1+noise2(time*256*get_global_id(1)/get_global_size(1),time*256.*get_global_id(0)/get_global_size(1)))));
     // pixel = pow( pixel, 0.45 );
     // pixel = (float4)(pixel.x,0,0,1.);
     // pixel = (float4)(0,pixel.y,0,1.);
     // pixel = (float4)(0,0,pixel.z,1.);
-
+    // pixel = perlin2d((1000.*(cos(time*M_PI)+1)+get_global_id(1)),(1000.*(sin(time*M_PI)+1)+get_global_id(0)),.1,6);
+    // pixel = perlin1d((get_global_id(1)),.1,6);
+    // pixel = perlin1d(get_global_id(1)*get_global_size(0)+get_global_id(0)*get_global_size(1),.001,7);
     pixel = (float4)(pixel.x,pixel.y,pixel.z,1.);
     write_imagef(dst_image1, coord,pixel);
     }////    
