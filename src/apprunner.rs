@@ -52,9 +52,9 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
         let mut triangles = 
         vec![
         myapp::triangle{
-            p1:[ 5.000, 5.000,-5.000],
-            p2:[-5.000,-5.000,-5.000],    
-            p3:[-5.000, 5.000,-5.000],  
+            p1:[552.8,000.0,000.0],
+            p2:[000.0,000.0,000.0],    
+            p3:[000.0,000.0,559.2],  
             R:0.01,  
             L:myapp::L { 
                 color: [0.95,0.95,0.95], 
@@ -65,11 +65,11 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 fresnel: 0., 
                 density: 0. 
             },
-        },
+        },//floor
         myapp::triangle{
-            p1:[ 5.000, 5.000,-5.000],
-            p2:[-5.000,-5.000,-5.000],    
-            p3:[ 5.000,-5.000,-5.000],  
+            p1:[000.0,000.0,000.0],
+            p2:[000.0,000.0,559.2],    
+            p3:[549.6,000.0,559.2],  
             R:0.01,  
             L:myapp::L { 
                 color: [0.95,0.95,0.95], 
@@ -80,11 +80,11 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 fresnel: 0., 
                 density: 0. 
             },
-        },
+        },//floor
         myapp::triangle{
-            p1:[ 2.000, 2.000,4.000],
-            p2:[-2.000,-2.000,4.000],    
-            p3:[-2.000, 2.000,4.000],  
+            p1:[343.0,548.8,227.0],
+            p2:[343.0,548.8,332.0],    
+            p3:[213.0,548.8,332.0],  
             R:0.01,  
             L:myapp::L { 
                 color: [20.,20.,20.], 
@@ -95,11 +95,11 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 fresnel: 0., 
                 density: 0. 
             },
-        },
+        },//light
         myapp::triangle{
-            p1:[ 2.000, 2.000,4.000],
-            p2:[-2.000,-2.000,4.000],    
-            p3:[ 2.000,-2.000,4.000],  
+            p1:[343.0,548.8,332.0],
+            p2:[213.0,548.8,332.0],    
+            p3:[213.0,548.8,227.0],  
             R:0.01,  
             L:myapp::L { 
                 color: [20.,20.,20.], 
@@ -110,11 +110,11 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 fresnel: 0., 
                 density: 0. 
             },
-        },
+        },//light
         myapp::triangle{
-            p1:[ 5.000, 5.000,5.000],
-            p2:[-5.000,-5.000,5.000],    
-            p3:[-5.000, 5.000,5.000],  
+            p1:[556.0,548.8,000.0],
+            p2:[556.0,548.8,559.2],    
+            p3:[000.0,548.8,559.2],  
             R:0.01,  
             L:myapp::L { 
                 color: [0.95,0.95,0.95], 
@@ -125,11 +125,11 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 fresnel: 0., 
                 density: 0. 
             },
-        },
+        },//celing
         myapp::triangle{
-            p1:[ 5.000, 5.000,5.000],
-            p2:[-5.000,-5.000,5.000],    
-            p3:[ 5.000,-5.000,5.000], 
+            p1:[556.0,548.8,559.2],
+            p2:[000.0,548.8,559.2],    
+            p3:[000.0,548.8,000.0],  
             R:0.01,  
             L:myapp::L { 
                 color: [0.95,0.95,0.95], 
@@ -140,11 +140,11 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 fresnel: 0., 
                 density: 0. 
             },
-        },
+        },//celing
         myapp::triangle{
-            p1:[-5.000, 5.000, 5.000],
-            p2:[-5.000,-5.000,-5.000],     
-            p3:[-5.000, 5.000,-5.000],  
+            p1:[549.6,000.0,599.2],
+            p2:[000.0,000.0,599.2],    
+            p3:[000.0,548.8,599.2],  
             R:0.01,  
             L:myapp::L { 
                 color: [0.1,0.85,0.1], 
@@ -155,11 +155,11 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 fresnel: 0., 
                 density: 0. 
             },
-        },
+        },//back wall
         myapp::triangle{
-            p1:[-5.000, 5.000, 5.000],
-            p2:[-5.000,-5.000,-5.000],    
-            p3:[-5.000,-5.000, 5.000], 
+            p1:[000.0,000.0,599.2],
+            p2:[000.0,548.8,599.2],    
+            p3:[556.0,548.8,599.2],  
             R:0.01,  
             L:myapp::L { 
                 color: [0.1,0.85,0.1], 
@@ -170,11 +170,11 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 fresnel: 0., 
                 density: 0. 
             },
-        },
+        },//back wall
         myapp::triangle{
-            p1:[5.000, 5.000, 5.000],
-            p2:[5.000,-5.000,-5.000],    
-            p3:[5.000, 5.000,-5.000],  
+            p1:[000.0,000.0,559.2],
+            p2:[000.0,000.0,000.0],    
+            p3:[000.0,548.8,000.0],  
             R:0.01,  
             L:myapp::L { 
                 color: [0.85,0.1,0.1], 
@@ -185,11 +185,11 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 fresnel: 0., 
                 density: 0. 
             },
-        },
+        },//green wall
         myapp::triangle{
-            p1:[5.000, 5.000, 5.000],
-            p2:[5.000,-5.000,-5.000],
-            p3:[5.000,-5.000, 5.000], 
+            p1:[000.0,000.0,000.0],
+            p2:[000.0,548.8,000.0],    
+            p3:[000.0,548.8,559.2],  
             R:0.01,  
             L:myapp::L { 
                 color: [0.85,0.1,0.1], 
@@ -200,11 +200,11 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 fresnel: 0., 
                 density: 0. 
             },
-        },
+        },//green wall
         myapp::triangle{
-            p1:[ 5.000, 5.000, 5.000],
-            p2:[-5.000, 5.000,-5.000],
-            p3:[ 5.000, 5.000,-5.000], 
+            p1:[000.0,000.0,000.0],
+            p2:[000.0,000.0,000.0],    
+            p3:[000.0,000.0,000.0],  
             R:0.01,  
             L:myapp::L { 
                 color: [1.0,1.0,1.0], 
@@ -215,11 +215,11 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 fresnel: 0., 
                 density: 0. 
             },
-        },
+        },// red wall
         myapp::triangle{
-            p1:[ 5.000, 5.000, 5.000],
-            p2:[-5.000, 5.000,-5.000],
-            p3:[-5.000, 5.000, 5.000], 
+            p1:[000.0,000.0,000.0],
+            p2:[000.0,000.0,000.0],    
+            p3:[000.0,000.0,000.0],  
             R:0.01,  
             L:myapp::L { 
                 color: [1.0,1.0,1.0], 
@@ -230,11 +230,11 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 fresnel: 0., 
                 density: 0. 
             },
-        },
+        },// red wall
         myapp::triangle{
-            p1:[-4.9, 4.0,-4.5],
-            p2:[ 2.0,-3.0,-4.5],    
-            p3:[ 4.5, 2.0,-2.0],  
+            p1:[000.0,000.0,000.0],
+            p2:[000.0,000.0,000.0],    
+            p3:[000.0,000.0,000.0],  
             R:0.01,  
             L:myapp::L { 
                 color: [0.3,0.3,0.9],         
@@ -247,9 +247,9 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             },
         },
         myapp::triangle{
-            p1:[-4.5,-4.0, -4.0],
-            p2:[-2.0,-3.0,  4.0],    
-            p3:[-4.5,-0.0, -4.0],  
+            p1:[000.0,000.0,000.0],
+            p2:[000.0,000.0,000.0],    
+            p3:[000.0,000.0,000.0],   
             R:0.01,  
             L:myapp::L { 
                 color: [0.9,0.3,0.9], 
