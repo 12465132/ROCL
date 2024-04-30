@@ -330,9 +330,10 @@ float3 reflect(float3 N, float3 R){
     return R-2.*dot(N,R)*N;
     }
 float3 camoffset (float3 v,float2 o){
-    return normalize(v)+
-        normalize((float3)(-(v.y),(v.x),0.))*
-        o.x+normalize((float3)(-v.z*v.x,-v.z*v.y,v.x*v.x+v.y*v.y))*o.y;
+    return 
+        (v)+
+        normalize((float3)(-(v.y),(v.x),0.))*o.x+
+        normalize((float3)(-v.z*v.x,-v.z*v.y,v.x*v.x+v.y*v.y))*o.y;
     }
 
 __kernel void render(
@@ -360,10 +361,13 @@ __kernel void render(
     float time
 ){
 
-    int2 coord = (int2)(get_global_id(0),get_global_id(1));
+    int2 coord =       (int2)(  get_global_id(0),  get_global_id(1));
+    float2 fcoord =  (float2)(  get_global_id(0),  get_global_id(1));
+    float2 fcoordT = (float2)(get_global_size(0),get_global_size(1));
     float2 uvinput = (float2)(((float)get_global_id(0)+.001)/(float)(get_global_size(0)),((float)get_global_id(1)+.001)/(float)get_global_size(1));
-    float2 uvi = (float2)(((float)get_global_id(0)+.001)/(float)(get_global_size(0)),((float)get_global_id(1)+.001)/(float)get_global_size(0));
-    float2 uv = 2.*uvi-1.;
+    float2 uvi = (float2)((fcoord.x)/fcoordT.x,(fcoord.y)/fcoordT.x);
+    float2 uv = (float2)(2.*uvi.x-1,2.*uvi.y-fcoordT.y/fcoordT.x);
+    // float2 uv = (2.*uvi-1);
     float2 i = (float2)(1.00/get_global_size(0),0/get_global_size(1));
     float2 j = (float2)(0/get_global_size(0),1.00/get_global_size(1));
     // float b = 50;///increse for stronger gpu
@@ -372,7 +376,7 @@ __kernel void render(
     float3 mean = 0.0;
     float3 M2 = 0.0;
     float4 pixel;
-    float3 N,RandomV,RandomV2;
+    float3 N = 0,RandomV,RandomV2;
     float4 pixelMC;
     float noise;
     struct Camera cam;
@@ -384,10 +388,12 @@ __kernel void render(
     // noise = (.5+half_exp(3-b*time))*frand((int)(1000*perlin2d(time+get_global_id(0)+montyC,time+get_global_id(1)-montyC,.01,2)));
     // noise = frand(noise);
 
-    cam.P = (float3)(pow( sin(M_PI),1)*15 ,
-                     pow( cos(M_PI),1)*15 ,-4);
-    cam.V = (float3)(pow(-sin(M_PI),1)*15 ,
-                     pow(-cos(M_PI),1)*15 ,0);
+    cam.P = (float3)( -00,
+                      -15,
+                      -00);
+    cam.V = (float3)(  00,
+                       15,
+                       00);
     cam.V = normalize(camoffset(normalize(cam.V),-uv));
     // cam.C = cam.V;
     cam.C = (float3)(1.);
@@ -409,7 +415,9 @@ __kernel void render(
     if(sqrt(3.)<length(read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz))
     {hasHitLight = true;}
     cam.C *= 
-    (read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz);
+    (read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz)
+    // *dot(-normalize(intersect.intersectPoint-cam.P),N)
+    ;
     if(3.>read_imagef(triangles,sampler_host,(float2)(3.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).z){break;}
     N = genNormal(sampler_host,intersect,cam,triangles);
     N = (0.<=dot(-N,cam.V))?N:-N;
