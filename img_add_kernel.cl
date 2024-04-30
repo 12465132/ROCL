@@ -7,7 +7,7 @@ __constant float ERR =.000001;
 __constant int //performace <-> precision
     RenderDistance 		= 100,
     Montycarlo 			= 10,
-    bouncecount 		= 8;
+    bouncecount 		= 10;
 __constant int hash[] = {208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,254,245,255,247,247,40,
                      185,248,251,245,28,124,204,204,76,36,1,107,28,234,163,202,224,245,128,167,204,
                      9,92,217,54,239,174,173,102,193,189,190,121,100,108,167,44,43,77,180,204,8,81,
@@ -387,14 +387,12 @@ __kernel void render(
     hasHitLight = false;
     // noise = (.5+half_exp(3-b*time))*frand((int)(1000*perlin2d(time+get_global_id(0)+montyC,time+get_global_id(1)-montyC,.01,2)));
     // noise = frand(noise);
-
-    cam.P = (float3)( -00,
-                      -15,
-                      -00);
-    cam.V = (float3)(  00,
-                       15,
-                       00);
-    cam.V = normalize(camoffset(normalize(cam.V),-uv));
+//green   = 549 nm 
+//red     = 612 nm  
+//blue    = 464 nm 
+    cam.P = (float3)(2.78,-8,2.78);
+    cam.V = (float3)(00, 01,00);
+    cam.V = normalize(camoffset(2.8*normalize(cam.V),-uv));
     // cam.C = cam.V;
     cam.C = (float3)(1.);
     int stepn = 0;
@@ -421,7 +419,7 @@ __kernel void render(
     if(3.>read_imagef(triangles,sampler_host,(float2)(3.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).z){break;}
     N = genNormal(sampler_host,intersect,cam,triangles);
     N = (0.<=dot(-N,cam.V))?N:-N;
-    cam.V = RandomV2+(reflect(normalize(genNormal(sampler_host,intersect,cam,triangles)),normalize(cam.V)));
+    cam.V = RandomV2;//+(reflect(normalize(genNormal(sampler_host,intersect,cam,triangles)),normalize(cam.V)));
     cam.V = (0.>dot(cam.V,N)?-cam.V:cam.V);
     
     // cam.V = normalize(cam.V);
@@ -430,7 +428,7 @@ __kernel void render(
 
     }
     if(!intersect.isIntersect&&bouncecount>stepn) {cam.C=0;}
-    if(!hasHitLight) {cam.C=0;}
+    // if(!hasHitLight) {cam.C=0;}
     pixelMC *= (float)(montyC-failedpath)/((float)montyC-failedpath+p);
     pixelMC += (float4)(cam.C,1.)*p/((float)montyC-failedpath+p);
     }
