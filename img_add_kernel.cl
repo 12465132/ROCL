@@ -6,8 +6,9 @@ __constant int SEED = 0;
 __constant float ERR =.000001;
 __constant int //performace <-> precision
     RenderDistance 		= 100,
-    Montycarlo 			= 10,
-    bouncecount 		= 10;
+    Montycarlo 			= 2,
+    bouncecount 		= 1,
+    maxfailedMC         = 10;
 __constant int hash[] = {208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,254,245,255,247,247,40,
                      185,248,251,245,28,124,204,204,76,36,1,107,28,234,163,202,224,245,128,167,204,
                      9,92,217,54,239,174,173,102,193,189,190,121,100,108,167,44,43,77,180,204,8,81,
@@ -376,15 +377,17 @@ __kernel void render(
     float3 mean = 0.0;
     float3 M2 = 0.0;
     float4 pixel;
-    float3 N = 0,RandomV,RandomV2;
+    float3 N = 0,lastN = 0,RandomV,RandomV2;
     float4 pixelMC;
     float noise;
     struct Camera cam;
     struct Data intersect;
     bool hasHitLight = false;
-    int failedpath = 0;
-    for(int montyC = 0;montyC < Montycarlo+failedpath;montyC++){
+    bool hasHitObject = false;
+    int badPath = 0;
+    for(int montyC = 0;montyC < Montycarlo+badPath;montyC++){
     hasHitLight = false;
+    hasHitObject = false;
     // noise = (.5+half_exp(3-b*time))*frand((int)(1000*perlin2d(time+get_global_id(0)+montyC,time+get_global_id(1)-montyC,.01,2)));
     // noise = frand(noise);
 //green   = 549 nm 
@@ -399,38 +402,60 @@ __kernel void render(
     for(stepn = 0;stepn<bouncecount;stepn++){
     intersect = GlobalIntersect(sampler_host,cam,triangles);
     if(!intersect.isIntersect){break;}
-    RandomV2 = read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).x
-        *((float3)(
-        2.*clamp(hash21( 100.*(100.*(cos(time+1+stepn+bouncecount*montyC)+1)+10+get_global_id(1)),100.*(100.*(sin(time+1+stepn+bouncecount*montyC)+1)+20+get_global_id(0))),0.,1.)-1.,
-        2.*clamp(hash21( 100.*(100.*(cos(time+1+stepn+bouncecount*montyC)+1)+30+get_global_id(1)),100.*(100.*(sin(time+1+stepn+bouncecount*montyC)+1)+40+get_global_id(0))),0.,1.)-1.,
-        2.*clamp(hash21( 100.*(100.*(cos(time+1+stepn+bouncecount*montyC)+1)+50+get_global_id(1)),100.*(100.*(sin(time+1+stepn+bouncecount*montyC)+1)+60+get_global_id(0))),0.,1.)-1.));;
+    hasHitObject = true;
+    RandomV2 = ((float3)(
+        2.*clamp(hash21( 100.*(100.*(cos(time+1+stepn+bouncecount*(montyC+badPath))+1)+10+get_global_id(1)),100.*(100.*(sin(time+1+stepn+bouncecount*(montyC+badPath))+1)+20+get_global_id(0))),0.,1.)-1.,
+        2.*clamp(hash21( 100.*(100.*(cos(time+1+stepn+bouncecount*(montyC+badPath))+1)+30+get_global_id(1)),100.*(100.*(sin(time+1+stepn+bouncecount*(montyC+badPath))+1)+40+get_global_id(0))),0.,1.)-1.,
+        2.*clamp(hash21( 100.*(100.*(cos(time+1+stepn+bouncecount*(montyC+badPath))+1)+50+get_global_id(1)),100.*(100.*(sin(time+1+stepn+bouncecount*(montyC+badPath))+1)+60+get_global_id(0))),0.,1.)-1.));;
         // spherical_to_cartesian((float3)(
         // 2.*M_1_PI*hash21( 1000.*(1000.*(cos(time*M_PI)+1+step+100)+get_global_id(1)),1000.*(1000.*(sin(time*M_PI)+1+step+200)+get_global_id(0)))-1.*M_1_PI,
         // 2.*M_1_PI*hash21( 1000.*(1000.*(cos(time*M_PI)+1+step+300)+get_global_id(1)),1000.*(1000.*(sin(time*M_PI)+1+step+400)+get_global_id(0)))-1.*M_1_PI,
         // 1.));;
     // RandomV2 = 0;
-
+    // lastN = N;
+    N = genNormal(sampler_host,intersect,cam,triangles);
+    N = (0.<=dot(-N,cam.V))?N:-N;
     if(sqrt(3.)<length(read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz))
     {hasHitLight = true;}
     cam.C *= 
+    // (stepn+1)*
+    // ((fast_length(lastN)<.5)?1:dot(normalize(intersect.intersectPoint-cam.P),normalize(lastN)))*
+    // (dot(normalize(intersect.intersectPoint-cam.P),N))*
     (read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz)
-    // *dot(-normalize(intersect.intersectPoint-cam.P),N)
+    // /((stepn==0)?1:dot(normalize(intersect.intersectPoint-cam.P),N))
     ;
     if(3.>read_imagef(triangles,sampler_host,(float2)(3.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).z){break;}
-    N = genNormal(sampler_host,intersect,cam,triangles);
-    N = (0.<=dot(-N,cam.V))?N:-N;
-    cam.V = RandomV2;//+(reflect(normalize(genNormal(sampler_host,intersect,cam,triangles)),normalize(cam.V)));
-    cam.V = (0.>dot(cam.V,N)?-cam.V:cam.V);
-    
-    // cam.V = normalize(cam.V);
+
     cam.P = intersect.intersectPoint;
+    // if(0.>dot(cam.V,N))
+    // {
+    // cam.V = RandomV2*read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).x
+    // //*dot(normalize(RandomV2),normalize(N));
+    // +reflect(normalize(N),normalize(cam.V));
+    // cam.P -= .00001*normalize(N);  
+    // }else{
+    // cam.V = RandomV2*read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).x
+    // //*dot(normalize(RandomV2),normalize(N));
+    // +reflect(normalize(N),normalize(cam.V));
+    // cam.P += .00001*normalize(N);
+    // }
+    cam.V = RandomV2*read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).x
+    //*dot(normalize(RandomV2),normalize(N));
+    +reflect(normalize(N),normalize(cam.V));
+    cam.V = (0.>dot(cam.V,N)?-cam.V:cam.V);
     cam.P += .00001*normalize(N);
+    cam.V = normalize(cam.V);
 
     }
-    if(!intersect.isIntersect&&bouncecount>stepn) {cam.C=0;}
-    // if(!hasHitLight) {cam.C=0;}
-    pixelMC *= (float)(montyC-failedpath)/((float)montyC-failedpath+p);
-    pixelMC += (float4)(cam.C,1.)*p/((float)montyC-failedpath+p);
+
+    if(!intersect.isIntersect&&bouncecount>stepn) 
+        {cam.C=0;}
+    if(!hasHitObject) 
+        {pixelMC=0;break;}
+    pixelMC *= (float)(montyC)/((float)montyC+p);
+    pixelMC += (float4)(cam.C,1.)*p/((float)montyC+p);
+    if(!intersect.isIntersect&&bouncecount>stepn&&maxfailedMC>=badPath) 
+        {badPath++;}
     }
 
     pixel = read_imagef(src_image1, sampler_host,uvinput);
