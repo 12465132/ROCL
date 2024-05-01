@@ -4,7 +4,7 @@ extern crate pixels;
 extern crate winit;
 extern crate winit_input_helper;
 extern crate env_logger;
-use std::default;
+
 
 use crate::myapp;
 
@@ -39,228 +39,302 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             let surface_texture = ::pixels::SurfaceTexture::new(window_size.width, window_size.height, &window);
             pixels::Pixels::new(xtotal.try_into().unwrap(), ytotal.try_into().unwrap(), surface_texture)?
         };
-        let defaultL = 
+        let _white_l = 
         myapp::L{
-            color:[0.5,0.5,0.5],
+            color:[0.755,0.748,0.751],
             reflection:true,
             refraction:false,
             n:0.,
-            roughness:0.,
+            roughness:100.0,
             fresnel:0.,
             density:0.,
         };
-        let mut triangles = 
+        let green_l = 
+        myapp::L{
+            color:[0.136,0.426,0.107],
+            reflection:true,
+            refraction:false,
+            n:0.,
+            roughness:100.0,
+            fresnel:0.,
+            density:0.,
+        };
+        let red_l = 
+        myapp::L{
+            color:[0.443,0.061,0.062],
+            reflection:true,
+            refraction:false,
+            n:0.,
+            roughness:100.0,
+            fresnel:0.,
+            density:0.,
+        };
+        let light_l = 
+        myapp::L { 
+            color: [100.,100.,100.], 
+            reflection: false, 
+            refraction: false, 
+            n: 0., 
+            roughness: 100.0, 
+            fresnel: 0., 
+            density: 0. 
+        };
+        let s_cube_l = 
+        myapp::L { 
+            color: [0.755,0.748,0.751],         
+            reflection: true, 
+            refraction: false, 
+            n: 2., 
+            roughness: 100.0, 
+            fresnel: 0., 
+            density: 0. 
+        };
+        let t_cube_l = 
+        myapp::L { 
+            color: [0.755,0.748,0.751],         
+            reflection: true, 
+            refraction: false, 
+            n: 1.5, 
+            roughness: 100.0, 
+            fresnel: 0., 
+            density: 0. 
+        };
+        let wall_l = 
+        myapp::L{
+            color:[0.755,0.748,0.751],
+            reflection:true,
+            refraction:false,
+            n:0.,
+            roughness:100.0,
+            fresnel:0.,
+            density:0.,
+        };
+        let triangles = 
         vec![
         myapp::triangle{
-            p1:[552.8,000.0,000.0],
-            p2:[000.0,000.0,000.0],    
-            p3:[000.0,000.0,559.2],  
+            p1:[5.528,0.000,0.000],
+            p2:[0.000,0.000,0.000],    
+            p3:[0.000,5.592,0.000],  
             R:0.01,  
-            L:myapp::L { 
-                color: [0.95,0.95,0.95], 
-                reflection: true, 
-                refraction: false, 
-                n: 0., 
-                roughness: 100.0, 
-                fresnel: 0., 
-                density: 0. 
-            },
+            L:wall_l,
         },//floor
         myapp::triangle{
-            p1:[000.0,000.0,000.0],
-            p2:[000.0,000.0,559.2],    
-            p3:[549.6,000.0,559.2],  
+            p1:[5.528,0.000,0.000],
+            p2:[0.000,5.592,0.000],    
+            p3:[5.496,5.592,0.000],  
             R:0.01,  
-            L:myapp::L { 
-                color: [0.95,0.95,0.95], 
-                reflection: true, 
-                refraction: false, 
-                n: 0., 
-                roughness: 100.0, 
-                fresnel: 0., 
-                density: 0. 
-            },
+            L:wall_l,
         },//floor
         myapp::triangle{
-            p1:[343.0,548.8,227.0],
-            p2:[343.0,548.8,332.0],    
-            p3:[213.0,548.8,332.0],  
+            p1:[3.430,2.270,5.48795],
+            p2:[3.430,3.320,5.48795],    
+            p3:[2.130,3.320,5.48795],  
             R:0.01,  
-            L:myapp::L { 
-                color: [20.,20.,20.], 
-                reflection: false, 
-                refraction: false, 
-                n: 0., 
-                roughness: 100., 
-                fresnel: 0., 
-                density: 0. 
-            },
+            L:light_l,
         },//light
         myapp::triangle{
-            p1:[343.0,548.8,332.0],
-            p2:[213.0,548.8,332.0],    
-            p3:[213.0,548.8,227.0],  
+            p1:[3.430,2.270,5.48795],
+            p2:[2.130,3.320,5.48795],    
+            p3:[2.130,2.270,5.48795],  
             R:0.01,  
-            L:myapp::L { 
-                color: [20.,20.,20.], 
-                reflection: false, 
-                refraction: false, 
-                n: 0., 
-                roughness: 100., 
-                fresnel: 0., 
-                density: 0. 
-            },
+            L:light_l,
         },//light
         myapp::triangle{
-            p1:[556.0,548.8,000.0],
-            p2:[556.0,548.8,559.2],    
-            p3:[000.0,548.8,559.2],  
+            p1:[5.560,0.000,5.488],
+            p2:[5.560,5.592,5.488],    
+            p3:[0.000,5.592,5.488],  
             R:0.01,  
-            L:myapp::L { 
-                color: [0.95,0.95,0.95], 
-                reflection: true, 
-                refraction: false, 
-                n: 0., 
-                roughness: 10.0, 
-                fresnel: 0., 
-                density: 0. 
-            },
+            L:wall_l,
         },//celing
         myapp::triangle{
-            p1:[556.0,548.8,559.2],
-            p2:[000.0,548.8,559.2],    
-            p3:[000.0,548.8,000.0],  
+            p1:[5.560,0.000,5.488],
+            p2:[0.000,5.592,5.488],    
+            p3:[0.000,0.000,5.488],  
             R:0.01,  
-            L:myapp::L { 
-                color: [0.95,0.95,0.95], 
-                reflection: true, 
-                refraction: false, 
-                n: 0., 
-                roughness: 10.0, 
-                fresnel: 0., 
-                density: 0. 
-            },
+            L:wall_l,
         },//celing
         myapp::triangle{
-            p1:[549.6,000.0,599.2],
-            p2:[000.0,000.0,599.2],    
-            p3:[000.0,548.8,599.2],  
+            p1:[5.496,5.592,0.000],
+            p2:[0.000,5.592,0.000],    
+            p3:[0.000,5.592,5.488],  
             R:0.01,  
-            L:myapp::L { 
-                color: [0.1,0.85,0.1], 
-                reflection: true, 
-                refraction: false, 
-                n: 0., 
-                roughness: 10., 
-                fresnel: 0., 
-                density: 0. 
-            },
+            L:wall_l,
         },//back wall
         myapp::triangle{
-            p1:[000.0,000.0,599.2],
-            p2:[000.0,548.8,599.2],    
-            p3:[556.0,548.8,599.2],  
+            p1:[5.496,5.592,0.000],
+            p2:[0.000,5.592,5.488],    
+            p3:[5.560,5.592,5.488],  
             R:0.01,  
-            L:myapp::L { 
-                color: [0.1,0.85,0.1], 
-                reflection: true, 
-                refraction: false, 
-                n: 0., 
-                roughness: 10., 
-                fresnel: 0., 
-                density: 0. 
-            },
+            L:wall_l,
         },//back wall
         myapp::triangle{
-            p1:[000.0,000.0,559.2],
-            p2:[000.0,000.0,000.0],    
-            p3:[000.0,548.8,000.0],  
+            p1:[0.000,5.592,0.000],
+            p2:[0.000,0.000,0.000],    
+            p3:[0.000,0.000,5.488],  
             R:0.01,  
-            L:myapp::L { 
-                color: [0.85,0.1,0.1], 
-                reflection: true, 
-                refraction: false, 
-                n: 0., 
-                roughness: 10., 
-                fresnel: 0., 
-                density: 0. 
-            },
+            L:green_l,
         },//green wall
         myapp::triangle{
-            p1:[000.0,000.0,000.0],
-            p2:[000.0,548.8,000.0],    
-            p3:[000.0,548.8,559.2],  
+            p1:[0.000,5.592,0.000],
+            p2:[0.000,0.000,5.488],    
+            p3:[0.000,5.592,5.488],  
             R:0.01,  
-            L:myapp::L { 
-                color: [0.85,0.1,0.1], 
-                reflection: true, 
-                refraction: false, 
-                n: 0., 
-                roughness: 10., 
-                fresnel: 0., 
-                density: 0. 
-            },
+            L:green_l,
         },//green wall
         myapp::triangle{
-            p1:[000.0,000.0,000.0],
-            p2:[000.0,000.0,000.0],    
-            p3:[000.0,000.0,000.0],  
+            p1:[5.528,0.000,0.000],
+            p2:[5.496,5.592,0.000],    
+            p3:[5.560,5.592,5.488],  
             R:0.01,  
-            L:myapp::L { 
-                color: [1.0,1.0,1.0], 
-                reflection: true, 
-                refraction: false, 
-                n: 0., 
-                roughness: 0.1, 
-                fresnel: 0., 
-                density: 0. 
-            },
+            L:red_l,
         },// red wall
         myapp::triangle{
-            p1:[000.0,000.0,000.0],
-            p2:[000.0,000.0,000.0],    
-            p3:[000.0,000.0,000.0],  
+            p1:[5.528,0.000,0.000],
+            p2:[5.560,5.592,5.488],    
+            p3:[5.560,0.000,5.488],  
             R:0.01,  
-            L:myapp::L { 
-                color: [1.0,1.0,1.0], 
-                reflection: true, 
-                refraction: false, 
-                n: 0., 
-                roughness: 0.1, 
-                fresnel: 0., 
-                density: 0. 
-            },
+            L:red_l,
         },// red wall
         myapp::triangle{
-            p1:[000.0,000.0,000.0],
-            p2:[000.0,000.0,000.0],    
-            p3:[000.0,000.0,000.0],  
+            p1:[1.300,0.650,1.650],
+            p2:[0.820,2.250,1.650],    
+            p3:[2.400,2.720,1.650],  
             R:0.01,  
-            L:myapp::L { 
-                color: [0.3,0.3,0.9],         
-                reflection: true, 
-                refraction: false, 
-                n: 0., 
-                roughness: 1., 
-                fresnel: 0., 
-                density: 0. 
-            },
-        },
+            L:s_cube_l,
+        },//short block
         myapp::triangle{
-            p1:[000.0,000.0,000.0],
-            p2:[000.0,000.0,000.0],    
-            p3:[000.0,000.0,000.0],   
+            p1:[1.300,0.650,1.650],
+            p2:[2.400,2.720,1.650],    
+            p3:[2.900,1.140,1.650],   
             R:0.01,  
-            L:myapp::L { 
-                color: [0.9,0.3,0.9], 
-                reflection: true, 
-                refraction: false, 
-                n: 0., 
-                roughness: 1., 
-                fresnel: 0., 
-                density: 0. 
-            },
-        },
+            L:s_cube_l,
+        },//short block
+        myapp::triangle{
+            p1:[2.900,1.140,0.000],
+            p2:[2.900,1.140,1.650],    
+            p3:[2.400,2.720,1.650],  
+            R:0.01,  
+            L:s_cube_l,
+        },//short block
+        myapp::triangle{
+            p1:[2.900,1.140,0.000],
+            p2:[2.400,2.720,1.650],    
+            p3:[2.400,2.720,0.000],   
+            R:0.01,  
+            L:s_cube_l,
+        },//short block
+        myapp::triangle{
+            p1:[1.300,0.650,0.000],
+            p2:[1.300,0.650,1.650],    
+            p3:[2.900,1.140,1.650],  
+            R:0.01,  
+            L:s_cube_l,
+        },//short block
+        myapp::triangle{
+            p1:[1.300,0.650,0.000],
+            p2:[2.900,1.140,1.650],    
+            p3:[2.900,1.140,0.000],   
+            R:0.01,  
+            L:s_cube_l,
+        },//short block
+        myapp::triangle{
+            p1:[0.820,2.250,0.000],
+            p2:[0.820,2.250,1.650],    
+            p3:[1.300,0.650,1.650],  
+            R:0.01,  
+            L:s_cube_l,
+        },//short block
+        myapp::triangle{
+            p1:[0.820,2.250,0.000],
+            p2:[1.300,0.650,1.650],    
+            p3:[1.300,0.650,0.000],   
+            R:0.01,  
+            L:s_cube_l,
+        },//short block
+        myapp::triangle{
+            p1:[2.400,2.720,0.000],
+            p2:[2.400,2.720,1.650],    
+            p3:[0.820,2.250,1.650],  
+            R:0.01,  
+            L:s_cube_l,
+        },//short block
+        myapp::triangle{
+            p1:[2.400,2.720,0.000],
+            p2:[0.820,2.250,1.650],    
+            p3:[0.820,2.250,0.000],  
+            R:0.01,  
+            L:s_cube_l,
+        },//short block
+        myapp::triangle{
+            p1:[4.230,2.470,3.300],
+            p2:[2.650,2.960,3.300],    
+            p3:[3.140,4.560,3.300],  
+            R:0.01,  
+            L:t_cube_l,
+        },//tall block
+        myapp::triangle{
+            p1:[4.230,2.470,3.300],
+            p2:[3.140,4.560,3.300],    
+            p3:[4.720,4.060,3.300],   
+            R:0.01,  
+            L:t_cube_l,
+        },//tall block
+        myapp::triangle{
+            p1:[4.230,2.470,0.000],
+            p2:[4.230,2.470,3.300],    
+            p3:[4.720,4.060,3.300],  
+            R:0.01,  
+            L:t_cube_l,
+        },//tall block
+        myapp::triangle{
+            p1:[4.230,2.470,0.000],
+            p2:[4.720,4.060,3.300],    
+            p3:[4.720,4.060,0.000],   
+            R:0.01,  
+            L:t_cube_l,
+        },//tall block
+        myapp::triangle{
+            p1:[4.720,4.060,0.000],
+            p2:[4.720,4.060,3.300],    
+            p3:[3.140,4.560,3.300],  
+            R:0.01,  
+            L:t_cube_l,
+        },//tall block
+        myapp::triangle{
+            p1:[4.720,4.060,0.000],
+            p2:[3.140,4.560,3.300],    
+            p3:[3.140,4.560,0.000],   
+            R:0.01,  
+            L:t_cube_l,
+        },//tall block
+        myapp::triangle{
+            p1:[3.140,4.560,0.000],
+            p2:[3.140,4.560,3.300],    
+            p3:[2.650,2.960,3.300],  
+            R:0.01,  
+            L:t_cube_l,
+        },//tall block
+        myapp::triangle{
+            p1:[3.140,4.560,0.000],
+            p2:[2.650,2.960,3.300],    
+            p3:[2.650,2.960,0.000],   
+            R:0.01,  
+            L:t_cube_l,
+        },//tall block
+        myapp::triangle{
+            p1:[2.650,2.960,0.000],
+            p2:[2.650,2.960,3.300],    
+            p3:[4.230,2.470,3.300],  
+            R:0.01,  
+            L:t_cube_l,
+        },//tall block
+        myapp::triangle{
+            p1:[2.650,2.960,0.000],
+            p2:[4.230,2.470,3.300],    
+            p3:[4.230,2.470,0.000],   
+            R:0.01,  
+            L:t_cube_l,
+        },//tall block
         ];
         let mut frames = 0;
         let mut loops = 0;
@@ -297,7 +371,7 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             if let winit::event::Event::WindowEvent { window_id:_, event:winit::event::WindowEvent::RedrawRequested } = event {
                 // window.pre_present_notify();
                 frames+=1;
-                if let Err(err) = world.lock().unwrap().raw_img.render() {
+                if let Err(_errr) = world.lock().unwrap().raw_img.render() {
                     control_flow.exit();
                     return;
                 }
