@@ -382,8 +382,9 @@ __kernel void render(
     struct Camera cam;
     struct Data intersect;
     bool hasHitLight = false;
-    int failedpath = 0;
-    for(int montyC = 0;montyC < Montycarlo+failedpath;montyC++){
+    bool hasHitObject = false;
+    int badPath = 0;
+    for(int montyC = 0;montyC < Montycarlo+badPath;montyC++){
     hasHitLight = false;
     intersect.isIntersect =false;
     // noise = (.5+half_exp(3-b*time))*frand((int)(1000*perlin2d(time+get_global_id(0)+montyC,time+get_global_id(1)-montyC,.01,2)));
@@ -413,7 +414,9 @@ __kernel void render(
         // 2.*M_1_PI*hash21( 1000.*(1000.*(cos(time*M_PI)+1+step+300)+get_global_id(1)),1000.*(1000.*(sin(time*M_PI)+1+step+400)+get_global_id(0)))-1.*M_1_PI,
         // 1.));;
     // RandomV2 = 0;
-
+    // lastN = N;
+    N = genNormal(sampler_host,intersect,cam,triangles);
+    N = (0.<=dot(-N,cam.V))?N:-N;
     if(sqrt(3.)<length(read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz))
     {hasHitLight = true;}
     if(hasHitLight&&stepn==0){cam.C = read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz;break;}
