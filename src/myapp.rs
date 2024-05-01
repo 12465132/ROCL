@@ -3,6 +3,8 @@ extern crate pixels;
 extern crate std;
 use std::{fs::File, io::Read};
 
+use clap::builder::Str;
+
 #[derive(Clone)]
 pub struct L {
 	pub color:[f32;3],	// diffuse color
@@ -34,7 +36,7 @@ pub struct MyApp {
     pub src_img1:ocl::Image<u8>,
     pub src_img2:ocl::Image<u8>,
     pub raw_img:pixels::Pixels,
-    frameintg:i32
+    pub frameintg:i32
 }
 impl MyApp {
     pub fn new(
@@ -189,6 +191,20 @@ impl MyApp {
         }
         pub fn reset(&mut self) -> &mut Self {
             self.frameintg = 0;
+            self
+        }
+        pub fn save(&mut self,S:String) -> &mut Self {
+            let xtotal ;
+            let ytotal ;
+            match self.pro_que.dims().clone() {
+                ocl::SpatialDims::Unspecified => return self,
+                ocl::SpatialDims::One(_) => return self,
+                ocl::SpatialDims::Two(xtot,ytot) => (xtotal,ytotal) = (xtot,ytot),
+                ocl::SpatialDims::Three(_, _,_) => return self,
+            }
+            let mut image: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = image::ImageBuffer::from_pixel((xtotal) as u32, (ytotal) as u32, image::Rgba([0,0,0,0_u8]));
+            self.dst_img1.read(&mut image).enq().unwrap();
+            image.save(&std::path::Path::new(&S)).unwrap();
             self
         }
         pub fn loadtriangles(&mut self,triangles:Vec<triangle>) -> &mut Self {

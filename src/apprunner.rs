@@ -38,77 +38,77 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             let window_size = window.inner_size();
             let surface_texture = ::pixels::SurfaceTexture::new(window_size.width, window_size.height, &window);
             pixels::Pixels::new(xtotal.try_into().unwrap(), ytotal.try_into().unwrap(), surface_texture)?
-        };
+            };
         let _white_l = 
-        myapp::L{
-            color:[0.755,0.748,0.751],
-            reflection:true,
-            refraction:false,
-            n:0.,
-            roughness:100.0,
-            fresnel:0.,
-            density:0.,
-        };
+            myapp::L{
+                color:[0.755,0.748,0.751],
+                reflection:true,
+                refraction:false,
+                n:0.,
+                roughness:1.0,
+                fresnel:0.,
+                density:0.,
+            };
         let green_l = 
-        myapp::L{
-            color:[0.136,0.426,0.107],
-            reflection:true,
-            refraction:false,
-            n:0.,
-            roughness:100.0,
-            fresnel:0.,
-            density:0.,
-        };
+            myapp::L{
+                color:[0.061,0.426,0.061],
+                reflection:true,
+                refraction:false,
+                n:0.,
+                roughness:1.0,
+                fresnel:0.,
+                density:0.,
+            };
         let red_l = 
-        myapp::L{
-            color:[0.443,0.061,0.062],
-            reflection:true,
-            refraction:false,
-            n:0.,
-            roughness:100.0,
-            fresnel:0.,
-            density:0.,
-        };
+            myapp::L{
+                color:[0.443,0.061,0.062],
+                reflection:true,
+                refraction:false,
+                n:0.,
+                roughness:1.0,
+                fresnel:0.,
+                density:0.,
+            };
         let light_l = 
-        myapp::L { 
-            color: [100.,100.,100.], 
-            reflection: false, 
-            refraction: false, 
-            n: 0., 
-            roughness: 100.0, 
-            fresnel: 0., 
-            density: 0. 
-        };
+            myapp::L { 
+                color: [18.,15.,8.], 
+                reflection: false, 
+                refraction: false, 
+                n: 0., 
+                roughness: 1.0, 
+                fresnel: 0., 
+                density: 0. 
+            };
         let s_cube_l = 
-        myapp::L { 
-            color: [0.755,0.748,0.751],         
-            reflection: true, 
-            refraction: false, 
-            n: 2., 
-            roughness: 100.0, 
-            fresnel: 0., 
-            density: 0. 
-        };
+            myapp::L { 
+                color: [0.755,0.748,0.751],         
+                reflection: true, 
+                refraction: false, 
+                n: 2., 
+                roughness: 1.0, 
+                fresnel: 0., 
+                density: 0. 
+            };
         let t_cube_l = 
-        myapp::L { 
-            color: [0.755,0.748,0.751],         
-            reflection: true, 
-            refraction: false, 
-            n: 1.5, 
-            roughness: 100.0, 
-            fresnel: 0., 
-            density: 0. 
-        };
+            myapp::L { 
+                color: [0.755,0.748,0.751],         
+                reflection: true, 
+                refraction: false, 
+                n: 1.5, 
+                roughness: 1.0, 
+                fresnel: 0., 
+                density: 0. 
+            };
         let wall_l = 
-        myapp::L{
-            color:[0.755,0.748,0.751],
-            reflection:true,
-            refraction:false,
-            n:0.,
-            roughness:100.0,
-            fresnel:0.,
-            density:0.,
-        };
+            myapp::L{
+                color:[0.755,0.748,0.751],
+                reflection:true,
+                refraction:false,
+                n:0.,
+                roughness:1.0,
+                fresnel:0.,
+                density:0.,
+            };
         let triangles = 
         vec![
         myapp::triangle{
@@ -355,9 +355,13 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             loop {
                 c1.wait();
                 let mut worldlocked = worldt.lock().unwrap();                    
-                worldlocked.render("render".to_string()).update();
+                worldlocked.render("render".to_string());//.update();
                 // worldlocked.dst_img1.cmd().copy(&worldlocked.dst_img1, [0, 0, 0]).enq().unwrap();
                 worldlocked.dst_img1.cmd().copy(&worldlocked.src_img1, [0, 0, 0]).enq().unwrap();
+                if(worldlocked.frameintg>=512){
+                    worldlocked.save("ROCL2.PNG".to_string());
+                    todo!();
+                }
                 // worldlocked
             }
             })

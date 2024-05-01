@@ -6,8 +6,8 @@ __constant int SEED = 0;
 __constant float ERR =.000001;
 __constant int //performace <-> precision
     RenderDistance 		= 100,
-    Montycarlo 			= 10,
-    bouncecount 		= 8;
+    Montycarlo 			= 30,
+    bouncecount 		= 15;
 __constant int hash[] = {208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,254,245,255,247,247,40,
                      185,248,251,245,28,124,204,204,76,36,1,107,28,234,163,202,224,245,128,167,204,
                      9,92,217,54,239,174,173,102,193,189,190,121,100,108,167,44,43,77,180,204,8,81,
@@ -49,7 +49,7 @@ struct triangle{
     struct L L;    
     };
 
-float dot2( float3 v ) { return dot(v,v); }
+    float dot2( float3 v ) { return dot(v,v); }
 int noise2(int x, int y)
     {
     int tmp = hash[(y + SEED) % 256];
@@ -130,7 +130,7 @@ float perlin1d(float x, float freq, int depth)
     return fin/div;
     }
 // float3 hash33( float3 p )      // this hash is not production ready, please
-//     {                        // replace this by something better
+    //     {                        // replace this by something better
 float hash21(float x,float y)
     {
 	return perlin2d((x),(y),.1,6);;
@@ -375,34 +375,36 @@ __kernel void render(
     float ps = .9;
     float3 mean = 0.0;
     float3 M2 = 0.0;
-    float4 pixel;
-    float3 N = 0,RandomV,RandomV2;
-    float4 pixelMC;
-    float noise;
+    float4 pixel = 0;
+    float3 N = 0,RandomV2 = 0;
+    float4 pixelMC = 0;
+    // float noise = 0;
     struct Camera cam;
     struct Data intersect;
     bool hasHitLight = false;
     int failedpath = 0;
     for(int montyC = 0;montyC < Montycarlo+failedpath;montyC++){
     hasHitLight = false;
+    intersect.isIntersect =false;
     // noise = (.5+half_exp(3-b*time))*frand((int)(1000*perlin2d(time+get_global_id(0)+montyC,time+get_global_id(1)-montyC,.01,2)));
     // noise = frand(noise);
 
-    cam.P = (float3)( -00,
-                      -15,
-                      -00);
-    cam.V = (float3)(  00,
-                       15,
-                       00);
-    cam.V = normalize(camoffset(normalize(cam.V),-uv));
+    // cam.P = (float3)(  3*sin(time+M_PI)+2.78,
+    //                    3*cos(time+M_PI)-8.00,
+    //                    2.73);
+    // cam.V = -(cam.P-(float3)(2.75));
+    // cam.V = normalize(camoffset(2.25*normalize(cam.V),-uv));
+    cam.P = (float3)(2.78,-8,2.78);
+    cam.V = (float3)(00,01,00);
+    cam.V = normalize(camoffset(2.8*normalize(cam.V),-uv));
+
     // cam.C = cam.V;
     cam.C = (float3)(1.);
     int stepn = 0;
     for(stepn = 0;stepn<bouncecount;stepn++){
     intersect = GlobalIntersect(sampler_host,cam,triangles);
     if(!intersect.isIntersect){break;}
-    RandomV2 = read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).x
-        *((float3)(
+    RandomV2 = ((float3)(
         2.*clamp(hash21( 100.*(100.*(cos(time+1+stepn+bouncecount*montyC)+1)+10+get_global_id(1)),100.*(100.*(sin(time+1+stepn+bouncecount*montyC)+1)+20+get_global_id(0))),0.,1.)-1.,
         2.*clamp(hash21( 100.*(100.*(cos(time+1+stepn+bouncecount*montyC)+1)+30+get_global_id(1)),100.*(100.*(sin(time+1+stepn+bouncecount*montyC)+1)+40+get_global_id(0))),0.,1.)-1.,
         2.*clamp(hash21( 100.*(100.*(cos(time+1+stepn+bouncecount*montyC)+1)+50+get_global_id(1)),100.*(100.*(sin(time+1+stepn+bouncecount*montyC)+1)+60+get_global_id(0))),0.,1.)-1.));;
@@ -414,33 +416,45 @@ __kernel void render(
 
     if(sqrt(3.)<length(read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz))
     {hasHitLight = true;}
+    if(hasHitLight&&stepn==0){cam.C = read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz;break;}
     cam.C *= 
-    (read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz)
+    // (stepn+1)*
+    // ((fast_length(lastN)<.5)?1:dot(normalize(intersect.intersectPoint-cam.P),normalize(lastN)))*
+    // (dot(normalize(cam.V),normalize(N)))*
+    (1*read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz)
     // *dot(-normalize(intersect.intersectPoint-cam.P),N)
     ;
     if(3.>read_imagef(triangles,sampler_host,(float2)(3.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).z){break;}
-    N = genNormal(sampler_host,intersect,cam,triangles);
+    N = normalize(genNormal(sampler_host,intersect,cam,triangles));
     N = (0.<=dot(-N,cam.V))?N:-N;
-    cam.V = RandomV2+(reflect(normalize(genNormal(sampler_host,intersect,cam,triangles)),normalize(cam.V)));
+    cam.V = (pow(dot(normalize(RandomV2),(N)),0.1666))*(RandomV2)+.00001*(N)+(1-clamp(read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).x,0.,1.))*(reflect(N,normalize(cam.V)));
+    cam.V = normalize(cam.V);
     cam.V = (0.>dot(cam.V,N)?-cam.V:cam.V);
     
     // cam.V = normalize(cam.V);
     cam.P = intersect.intersectPoint;
-    cam.P += .00001*normalize(N);
+    cam.P += .00001*(N);
 
     }
-    if(!intersect.isIntersect&&bouncecount>stepn) {cam.C=0;}
+    cam.C *= M_PI*M_PI;
+    // if((!intersect.isIntersect)&&bouncecount>stepn) 
+    // {cam.C=0;}else{cam.C=1;}
+    // if((intersect.isIntersect)) 
+    // {cam.C=0;}else{cam.C=1;}
+    // if(bouncecount>stepn) 
+    // {cam.C=0;}else{cam.C=1;}
+    // if((!intersect.isIntersect)&&bouncecount>stepn) 
+    // {cam.C=0;}
     if(!hasHitLight) {cam.C=0;}
-    pixelMC *= (float)(montyC-failedpath)/((float)montyC-failedpath+p);
-    pixelMC += (float4)(cam.C,1.)*p/((float)montyC-failedpath+p);
+    pixelMC += (float4)(cam.C,1.);
     }
-
+    pixelMC /= pixelMC.a;
     pixel = read_imagef(src_image1, sampler_host,uvinput);
     // if(intersect.isIntersect==true) {pixel *= (float)frameintg/((float)frameintg+p);pixel += (float4)(pixelMC.xyz,1.)*p/((float)frameintg+p);}
     // {pixel *= (float)frameintg/((float)frameintg+p);pixel += (float4)(pixelMC.xyz,1.)*p/((float)frameintg+p);}
     {pixel *= (float)frameintg/((float)frameintg+p);pixel += (float4)(pow( pixelMC.xyz, 0.45 ),1.)*p/((float)frameintg+p);}
     // if(intersect.isIntersect==true){pixel *= (1-p);pixel += (float4)(pixelMC.xyz,1.)*p;}
-    //  {pixel = (float4)(pixelMC.xyz,1.);}
+    //   {pixel = (float4)(pixelMC.xyz,1.);}
     // pixel = (float4)(pixelMC.xyz,1.);
     pixel = (float4)(pixel.x,pixel.y,pixel.z,1.);
     write_imagef(dst_image1, coord,pixel);
