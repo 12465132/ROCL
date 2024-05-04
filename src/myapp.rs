@@ -1,7 +1,7 @@
 extern crate ocl;
 extern crate pixels;
 extern crate std;
-use std::{fs::File, io::Read};
+use std::{fs::File, io::{Read, Write}};
 
 use clap::builder::Str;
 
@@ -31,11 +31,12 @@ pub struct MyApp {
     pub pro_que:ocl::ProQue,
     pub time:std::time::Instant,
     pub triangles:ocl::Image<f32>,
-    pub dst_img1:ocl::Image<u8>,
-    pub dst_img2:ocl::Image<u8>,
-    pub src_img1:ocl::Image<u8>,
-    pub src_img2:ocl::Image<u8>,
-    pub raw_img:pixels::Pixels,
+    pub dst_img:ocl::Image<f32>,
+    pub framebuffer:ocl::Image<u8>,
+    // pub src_img1:ocl::Image<f32>,
+    // pub src_img2:ocl::Image<f32>,
+    pub pixels:pixels::Pixels,
+    pub raw_img:image::DynamicImage,
     pub frameintg:i32
 }
 impl MyApp {
@@ -45,6 +46,7 @@ impl MyApp {
     image_path:String,
     xtotal:usize,
     ytotal:usize,
+    layers:usize,
     triangleslength:usize
     ) -> MyApp{
         let mut src:String = 
@@ -70,48 +72,48 @@ impl MyApp {
                 ocl::builders::ProgramBuilder::new()
                 .src_file(file_path)
                 .cmplr_opt(
-                    " -cl-unsafe-math-optimizations -cl-fast-relaxed-math -cl-finite-math-only -cl-mad-enable "
+                    " -cl-std=CL3.0 -cl-unsafe-math-optimizations -cl-fast-relaxed-math -cl-finite-math-only -cl-mad-enable "
                 )
                 .to_owned()
             )
             .build()
             .unwrap();
-        let src_img1 = 
-            ocl::builders::ImageBuilder::<u8>::new()
+        // let src_img1: ocl::Image<f32> = 
+        //     ocl::builders::ImageBuilder::<f32>::new()
+        //     .channel_order(ocl::core::ImageChannelOrder::Rgba)
+        //     .channel_data_type(ocl::core::ImageChannelDataType::Float)
+        //     .image_type(ocl::enums::MemObjectType::Image2d)
+        //     .dims(pro_que.dims())
+        //     .flags(
+        //         ocl::flags::MEM_READ_WRITE
+        //     )
+        //     // .copy_host_slice(&image.into_raw()..as_mut().into())
+        //     .queue(pro_que.queue().clone())
+        //     .build()
+        //     .expect("214");
+        // let src_img2: ocl::Image<f32> = 
+        //     ocl::builders::ImageBuilder::<f32>::new()
+        //     .channel_order(ocl::core::ImageChannelOrder::Rgba)
+        //     .channel_data_type(ocl::core::ImageChannelDataType::Float)
+        //     .image_type(ocl::enums::MemObjectType::Image2d)
+        //     .dims(pro_que.dims())
+        //     .flags(
+        //         ocl::flags::MEM_READ_WRITE
+        //     )
+        //     // .copy_host_slice(&image)
+        //     .queue(pro_que.queue().clone())
+        //     .build()
+        //     .expect("214");
+        let dst_img1: ocl::Image<f32> = 
+            ocl::Image::<f32>::builder()
             .channel_order(ocl::core::ImageChannelOrder::Rgba)
-            .channel_data_type(ocl::core::ImageChannelDataType::UnormInt8)
+            .channel_data_type(ocl::core::ImageChannelDataType::Float)
             .image_type(ocl::enums::MemObjectType::Image2d)
-            .dims(pro_que.dims())
+            .dims(ocl::SpatialDims::Three(xtotal, ytotal, layers))
             .flags(
                 ocl::flags::MEM_READ_WRITE
             )
-            .copy_host_slice(&image)
-            .queue(pro_que.queue().clone())
-            .build()
-            .expect("214");
-        let src_img2 = 
-            ocl::builders::ImageBuilder::<u8>::new()
-            .channel_order(ocl::core::ImageChannelOrder::Rgba)
-            .channel_data_type(ocl::core::ImageChannelDataType::UnormInt8)
-            .image_type(ocl::enums::MemObjectType::Image2d)
-            .dims(pro_que.dims())
-            .flags(
-                ocl::flags::MEM_READ_WRITE
-            )
-            .copy_host_slice(&image)
-            .queue(pro_que.queue().clone())
-            .build()
-            .expect("214");
-        let dst_img1: ocl::Image<u8> = 
-            ocl::Image::<u8>::builder()
-            .channel_order(ocl::core::ImageChannelOrder::Rgba)
-            .channel_data_type(ocl::core::ImageChannelDataType::UnormInt8)
-            .image_type(ocl::enums::MemObjectType::Image2d)
-            .dims(pro_que.dims())
-            .flags(
-                ocl::flags::MEM_READ_WRITE
-            )
-            .copy_host_slice(&image)
+            // .copy_host_slice(&image)
             .queue(pro_que.queue().clone())
             .build()
             .expect("229");       
@@ -128,6 +130,7 @@ impl MyApp {
             .queue(pro_que.queue().clone())
             .build()
             .expect("229");
+        let raw_image = image::DynamicImage::new_rgba32f(xtotal as u32,ytotal as u32);
         let triangles: ocl::Image<f32> = 
             ocl::Image::<f32>::builder()
             .channel_order(ocl::core::ImageChannelOrder::Rgba)
@@ -147,11 +150,10 @@ impl MyApp {
             pro_que: pro_que, 
             time: time, 
             triangles: triangles,
-            dst_img1: dst_img1, 
-            dst_img2: dst_img2, 
-            src_img1: src_img1, 
-            src_img2: src_img2, 
-            raw_img: pixels,
+            dst_img: dst_img1, 
+            framebuffer: dst_img2, 
+            raw_img: raw_image,
+            pixels: pixels,
             frameintg:0
         }
             
@@ -172,10 +174,10 @@ impl MyApp {
             let kernel = self.pro_que.kernel_builder(kernel)
                 .arg_sampler(&ocl::Sampler::new(self.pro_que.context(), true, ocl::enums::AddressingMode::Repeat, ocl::enums::FilterMode::Nearest).unwrap())
                 .arg(&self.triangles)
-                .arg(&self.src_img1)
-                .arg(&self.src_img2)
-                .arg(&self.dst_img1)
-                .arg(&self.dst_img2)
+                // .arg(&self.src_img1)
+                // .arg(&self.src_img2)
+                .arg(&self.dst_img)
+                .arg(&self.framebuffer)
                 .arg(self.frameintg)    
                 .arg((self.time.elapsed().as_nanos() as f32)/1000000000.)             
                 .build().expect("263");
@@ -186,27 +188,34 @@ impl MyApp {
         }
         /// Update the `World` internal state; bounce the box around the screen.
         pub fn update(&mut self) -> &mut Self {
-            self.dst_img1.read(self.raw_img.frame_mut()).enq().expect("267");
+            self.framebuffer.read(&mut self.pixels.frame_mut()).enq().expect("267");
+            // // self.raw_img.to_rgba8().as_mut().iter_mut().zip(self.pixels.frame_mut()).map(|(A,B)|{B}).collect();
+            // for pixel in self.pixels.frame_mut().chunks_exact_mut(4) {
+            //     pixel[0] = 255;; // R
+            //     pixel[1] = 255;; // G
+            //     pixel[2] = 255;; // B
+            //     pixel[3] = 255;; // A
+            // }
             self 
         }
         pub fn reset(&mut self) -> &mut Self {
             self.frameintg = 0;
             self
         }
-        pub fn save(&mut self,S:String) -> &mut Self {
-            let xtotal ;
-            let ytotal ;
-            match self.pro_que.dims().clone() {
-                ocl::SpatialDims::Unspecified => return self,
-                ocl::SpatialDims::One(_) => return self,
-                ocl::SpatialDims::Two(xtot,ytot) => (xtotal,ytotal) = (xtot,ytot),
-                ocl::SpatialDims::Three(_, _,_) => return self,
-            }
-            let mut image: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = image::ImageBuffer::from_pixel((xtotal) as u32, (ytotal) as u32, image::Rgba([0,0,0,0_u8]));
-            self.dst_img1.read(&mut image).enq().unwrap();
-            image.save(&std::path::Path::new(&S)).unwrap();
-            self
-        }
+        // pub fn save(&mut self,S:String) -> &mut Self {
+        //     let xtotal ;
+        //     let ytotal ;
+        //     match self.pro_que.dims().clone() {
+        //         ocl::SpatialDims::Unspecified => return self,
+        //         ocl::SpatialDims::One(_) => return self,
+        //         ocl::SpatialDims::Two(xtot,ytot) => (xtotal,ytotal) = (xtot,ytot),
+        //         ocl::SpatialDims::Three(_, _,_) => return self,
+        //     }
+        //     let mut image: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = image::ImageBuffer::from_pixel((xtotal) as u32, (ytotal) as u32, image::Rgba([0,0,0,0_u8]));
+        //     self.dst_img1.read(&mut image).enq().unwrap();
+        //     image.save(&std::path::Path::new(&S)).unwrap();
+        //     self
+        // }
         pub fn loadtriangles(&mut self,triangles:Vec<triangle>) -> &mut Self {
             if let ocl::SpatialDims::Two(_,maxtriangles) = self.triangles.dims(){
                 if triangles.len()>*maxtriangles {return self}

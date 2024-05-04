@@ -35,11 +35,20 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
 
     
     // window.set_cursor_visible(false);
-        let pixels = {
+        let mut pixels = {
             let window_size = window.inner_size();
             let surface_texture = ::pixels::SurfaceTexture::new(window_size.width, window_size.height, &window);
-            pixels::Pixels::new(xtotal.try_into().unwrap(), ytotal.try_into().unwrap(), surface_texture)?
-            };
+            pixels::PixelsBuilder::new(xtotal as u32, ytotal as u32, surface_texture)
+            .clear_color(pixels::wgpu::Color::BLACK)
+            .build()
+            .unwrap()
+        };
+        for pixel in pixels.frame_mut().chunks_exact_mut(4) {
+            pixel[0] = 255;; // R
+            pixel[1] = 255;; // G
+            pixel[2] = 255;; // B
+            pixel[3] = 255;; // A
+        }
         let _white_l = 
             myapp::L{
                 color:[0.755,0.748,0.751],
@@ -340,7 +349,7 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
         let mut frames = 0;
         let mut loops = 0;
         let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
-        let world = std::sync::Arc::new(std::sync::Mutex::new(myapp::MyApp::new(pixels,file_path,"default.jpg".to_string().clone(),xtotal,ytotal,triangles.len())));
+        let world = std::sync::Arc::new(std::sync::Mutex::new(myapp::MyApp::new(pixels,file_path,"default.jpg".to_string().clone(),xtotal,ytotal,3,triangles.len())));
         let c2 = std::sync::Arc::clone(&barrier);
         
         world.lock().unwrap().loadtriangles(triangles);
@@ -349,20 +358,23 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             let worldt = std::sync::Arc::clone(&world);
             std::thread::spawn(move || {
                 // let imaget = image.clone();
-                worldt.lock().unwrap().src_img1.write(&image::io::Reader::open("default.jpg".to_string()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
-                worldt.lock().unwrap().src_img2.write(&image::io::Reader::open("default.jpg".to_string()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
+                // worldt.lock().expect("failed lock").src_img1.write(&image::io::Reader::open("default.jpg".to_string()).unwrap().decode().unwrap().to_rgb32f()).enq().unwrap();
+                // worldt.lock().expect("failed lock").src_img2.write(&image::io::Reader::open("default.jpg".to_string()).unwrap().decode().unwrap().to_rgb32f()).enq().unwrap();
                 // worldt.lock().unwrap().src_img1.write(&image::io::Reader::open(image.clone()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
 
             loop {
                 c1.wait();
-                let mut worldlocked = worldt.lock().unwrap();                    
-                worldlocked.render("render".to_string());//.update();
+                let mut worldlocked = worldt.lock().expect("failed lock");                    
+                worldlocked.render("render".to_string()).update();
                 // worldlocked.dst_img1.cmd().copy(&worldlocked.dst_img1, [0, 0, 0]).enq().unwrap();
-                worldlocked.dst_img1.cmd().copy(&worldlocked.src_img1, [0, 0, 0]).enq().unwrap();
-                if(worldlocked.frameintg>=512){
-                    worldlocked.save("ROCL2.PNG".to_string());
-                    todo!();
-                }
+                // worldlocked.framebuffer.cmd().copy(&worldlocked.src_img1, [0, 0, 0]).enq().unwrap();
+                // worldlocked.framebuffer.cmd().copy(&worldlocked.src_img2, [0, 0, 0]).enq().unwrap();
+                // if(worldlocked.frameintg>=512){
+                //     worldlocked.save("ROCL2.PNG".to_string());
+                //     todo!();
+                // }
+                
+                c1.wait();
                 // worldlocked
             }
             })
@@ -376,11 +388,14 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             if let winit::event::Event::WindowEvent { window_id:_, event:winit::event::WindowEvent::RedrawRequested } = event {
                 // window.pre_present_notify();
                 frames+=1;
-                if let Err(_errr) = world.lock().unwrap().raw_img.render() {
+                c2.wait();
+                if let Err(err) = world.lock().expect("failed lock").pixels.render() {
+                    println!("{err}");
                     control_flow.exit();
                     return;
                 }
                 c2.wait();
+
             }
             // if let Event::UserEvent(val) = event {
             //     // let mut a = pixels.frame_mut();
@@ -409,7 +424,7 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
     
                 // Resize the window
                 if let Some(size) = input.window_resized() {
-                    world.lock().unwrap().raw_img.resize_surface(size.width, size.height).unwrap();
+                    world.lock().unwrap().pixels.resize_surface(size.width, size.height).unwrap();
                 }
                 window.request_redraw();
                 window.pre_present_notify();
@@ -420,10 +435,6 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 // println!(" fps:{}",1./((now_save.elapsed().as_nanos() as f64)/1000000000.));
 
             }
-            // if world.lock().unwrap().time.elapsed() - time_rendered >= std::time::Duration::from_millis(30) {
-            //     time_rendered = world.lock().unwrap().time.elapsed();
-
-            //     }
             println!("total frames:{frames}");
             println!("frames per second: {}",(frames as f64)/((now_total.elapsed().as_nanos() as f64)/1000000000.));
             println!("loops per second: {}",(loops as f64)/((now_total.elapsed().as_nanos() as f64)/1000000000.));
