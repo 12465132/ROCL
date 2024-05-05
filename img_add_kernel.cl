@@ -7,8 +7,9 @@ __constant int SEED = 0;
 __constant float ERR =.000001;
 __constant int //performace <-> precision
     RenderDistance 		= 100,
-    Montycarlo 			= 15,
-    bouncecount 		= 2,
+    Montycarlo 			= 10,
+    bouncecount 		= 10,
+    randomattempts 		= 5,
     extrapaths          = 5;
 __constant int hash[] = {208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,254,245,255,247,247,40,
                      185,248,251,245,28,124,204,204,76,36,1,107,28,234,163,202,224,245,128,167,204,
@@ -326,7 +327,7 @@ float3 genNormal(sampler_t sampler_host, struct Data D,struct Camera C, read_onl
         read_imagef(triangles,sampler_host,(float2)(2.5/get_image_width(triangles),((float)D.index-.5)/get_image_height(triangles))).xyz-
         read_imagef(triangles,sampler_host,(float2)(0.5/get_image_width(triangles),((float)D.index-.5)/get_image_height(triangles))).xyz
         );
-    return fabs(dot(N,C.V))==dot(N,C.V)?-N:N;
+    return normalize(fabs(dot(N,C.V))==dot(N,C.V)?-N:N);
     }
 float3 reflect(float3 N, float3 R){
     return R-2.*dot(N,R)*N;
@@ -416,10 +417,18 @@ __kernel void render(
     intersect = GlobalIntersect(sampler_host,cam,triangles);
     if(!intersect.isIntersect){break;}
     // intersect.isIntersect =false;
+    for(int randomn = 0;randomn<randomattempts;randomn++){
     RandomV2 = ((float3)(
         2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+1)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+2)+get_global_id(0)))-1.,
         2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+3)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+4)+get_global_id(0)))-1.,
-        2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+5)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+6)+get_global_id(0)))-1.));;
+        2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+5)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+6)+get_global_id(0)))-1.));
+    if (length(RandomV2)<=1){break;}
+    }
+    RandomV2 = ((float3)(
+    2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+1)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+2)+get_global_id(0)))-1.,
+    2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+3)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+4)+get_global_id(0)))-1.,
+    2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+5)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+6)+get_global_id(0)))-1.));
+    
     // RandomV2 = fast_normalize(RandomV2);
         // spherical_to_cartesian((float3)(
         // 2.*M_1_PI*hash21( 1000.*(1000.*(cos(time*M_PI)+1+step+100)+get_global_id(1)),1000.*(1000.*(sin(time*M_PI)+1+step+200)+get_global_id(0)))-1.*M_1_PI,
@@ -435,17 +444,24 @@ __kernel void render(
     cam.C *= 
     // (stepn+1)*
     // ((fast_length(lastN)<.5)?1:dot(normalize(intersect.intersectPoint-cam.P),normalize(lastN)))*
-    (dot(normalize(cam.V),(stepn==0?normalize(lastN):cam.V))+(1-hasHitLight))*
+    // (stepn==0?1:dot((cam.V),(lastN)))*
+    (hasHitLight*dot(normalize(cam.V),(stepn!=0?normalize(lastN):cam.V))+(1-hasHitLight))*
     (read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz)
     // *dot(-normalize(intersect.intersectPoint-cam.P),N)
     ;
     if(3.>read_imagef(triangles,sampler_host,(float2)(3.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).z){break;}
-    N = genNormal(sampler_host,intersect,cam,triangles);
+    // N = genNormal(sampler_host,intersect,cam,triangles);
     // N = (0.<=dot(-N,cam.V))?N:-N;
-    cam.V = (pow(dot(normalize(RandomV2),(N)),0.1666))*(RandomV2)+.00001*(N)+(1-clamp(read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).x,0.,1.))*(reflect(N,normalize(cam.V)));
-    // cam.V = (cam.V);
+    float reflectance = clamp(read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).x,0.,1.);
+    cam.V = (RandomV2);//+(1-reflectance)*(reflect(N,normalize(cam.V)));
+    // cam.V = 0.
+    // +(dot(RandomV2,N)>0?RandomV2:-RandomV2)
+    // +.00001*(N)
+    // +(1.-reflectance)
+        // *(reflect(N,normalize(cam.V)));
+        // cam.V = (cam.V);
     cam.V = (0.>dot(cam.V,N)?-cam.V:cam.V);
-    
+    cam.V = normalize(cam.V);
     // cam.V = normalize(cam.V);
     cam.P = intersect.intersectPoint+.00001*(N);
     // cam.P += ;
