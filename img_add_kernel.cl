@@ -7,8 +7,8 @@ __constant int SEED = 0;
 __constant float ERR =.000001;
 __constant int //performace <-> precision
     RenderDistance 		= 100,
-    Montycarlo 			= 30,
-    bouncecount 		= 5,
+    Montycarlo 			= 15,
+    bouncecount 		= 2,
     extrapaths          = 5;
 __constant int hash[] = {208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,254,245,255,247,247,40,
                      185,248,251,245,28,124,204,204,76,36,1,107,28,234,163,202,224,245,128,167,204,
@@ -371,7 +371,7 @@ __kernel void render(
     float2 i = (float2)(1.00/get_global_size(0),0/get_global_size(1));
     float2 j = (float2)(0/get_global_size(0),1.00/get_global_size(1));
     // float b = 50;///increse for stronger gpu
-    float p = 1.;
+    float p = .5;
     float ps = .9;
 
     float4 pixel0 = read_imagef(dst_image,(int4)(coord,0.,0.));//raw image
@@ -387,7 +387,7 @@ __kernel void render(
     float4 pixelM2 = 0;
     float4 pixelSD = 0;
     float4 pixelMC = 0;
-    float3 N = 0,RandomV2 = 0;
+    float3 N = 0,lastN = 0,RandomV2 = 0;
     // float noise = 0;
     struct Camera cam;
     struct Data intersect;
@@ -426,7 +426,7 @@ __kernel void render(
         // 2.*M_1_PI*hash21( 1000.*(1000.*(cos(time*M_PI)+1+step+300)+get_global_id(1)),1000.*(1000.*(sin(time*M_PI)+1+step+400)+get_global_id(0)))-1.*M_1_PI,
         // 1.));;
     // RandomV2 = 0;
-    // lastN = N;
+    lastN = N;
     N = genNormal(sampler_host,intersect,cam,triangles);
     // N = (0.<=dot(-N,cam.V))?N:-N;
     if(sqrt(3.)<fast_length(read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz))
@@ -435,8 +435,8 @@ __kernel void render(
     cam.C *= 
     // (stepn+1)*
     // ((fast_length(lastN)<.5)?1:dot(normalize(intersect.intersectPoint-cam.P),normalize(lastN)))*
-    // (dot(normalize(cam.V),normalize(N)))*
-    (1*read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz)
+    (dot(normalize(cam.V),(stepn==0?normalize(lastN):cam.V))+(1-hasHitLight))*
+    (read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz)
     // *dot(-normalize(intersect.intersectPoint-cam.P),N)
     ;
     if(3.>read_imagef(triangles,sampler_host,(float2)(3.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).z){break;}
@@ -498,10 +498,11 @@ __kernel void render(
     // write_imagef(dst_image1, coord,pixel1);
 
     // read_imagef(dst_image,(int)(coord,0));
-    write_imagef(dst_image, (int4)(coord,0,1000),pixel0);
-    write_imagef(dst_image, (int4)(coord,1,1000),pixel1);
+    write_imagef(dst_image, (int4)(coord,0,0),pixel0);
+    write_imagef(dst_image, (int4)(coord,1,0),pixel1);
     //post-processing
     pixel0 = pixel0/pixel0.a;
     pixel0 = pow( pixel0, 0.45 );
+    // pixel0 = pow( pixel0, 2 );
     write_imagef(framebuffer, coord,pixel0);
     }////    

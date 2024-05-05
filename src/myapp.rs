@@ -72,7 +72,7 @@ impl MyApp {
                 ocl::builders::ProgramBuilder::new()
                 .src_file(file_path)
                 .cmplr_opt(
-                    " -cl-std=CL3.0 -cl-unsafe-math-optimizations -cl-fast-relaxed-math -cl-finite-math-only -cl-mad-enable "
+                    " -cl-std=CL3.0 -cl-single-precision-constant -cl-unsafe-math-optimizations -cl-fast-relaxed-math -cl-finite-math-only -cl-mad-enable -w"
                 )
                 .to_owned()
             )
