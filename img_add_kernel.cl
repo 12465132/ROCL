@@ -8,7 +8,7 @@ __constant float ERR =.000001;
 __constant int //performace <-> precision
     RenderDistance 		= 100,
     Montycarlo 			= 30,
-    bouncecount 		= 10,
+    bouncecount 		= 5,
     randomattempts 		= 5,
     extrapaths          = 5;
 __constant int hash[] = {208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,254,245,255,247,247,40,
@@ -448,7 +448,7 @@ __kernel void render(
     // (!hasHitLight?1:dot((cam.V),(lastN)))*    
     // (stepn==0?1:dot((cam.V),(    N)))*
     // powr((stepn==0?1:dot((cam.V),(lastN))),2)*
-    pown((hasHitLight?stepn==0?1:dot(cam.V,lastN) :1),2)*
+    (hasHitLight?stepn==0?1:dot(cam.V,lastN):1)*
     // (hasHitLight?stepn==0?1:dot(cam.V,lastN) :1)*
     // ((1-dot((-cam.V),(stepn!=0?(N    ):cam.V))))*
     // ((1-dot((cam.V),(stepn!=0?(lastN):cam.V))))*
@@ -524,9 +524,12 @@ __kernel void render(
     // read_imagef(dst_image,(int)(coord,0));
     write_imagef(dst_image, (int4)(coord,0,0),pixel0);
     write_imagef(dst_image, (int4)(coord,1,0),pixel1);
-    //post-processing
     pixel0 = pixel0/pixel0.a;
-    pixel0 = pow( pixel0, 0.45 );
+    //post-processing
+    // pixel0 = pow( pixel0, 0.40 );
+    pixel0 = (2.*pixel0)/(2.*pixel0+1.);
+    // pixel0 = pow( pixel0, 0.45 );    
     // pixel0 = pow( pixel0, 2 );
-    write_imagef(framebuffer, coord,pixel0);
+    pixel0 = pow( pixel0, 0.45 );//IQ
+    write_imagef(framebuffer, coord,(float4)(pixel0.xyz,1.));
     }////    
