@@ -7,7 +7,7 @@ __constant int SEED = 0;
 __constant float ERR =.000001;
 __constant int //performace <-> precision
     RenderDistance 		= 100,
-    Montycarlo 			= 30,
+    Montycarlo 			= 2,
     bouncecount 		= 5,
     randomattempts 		= 5,
     extrapaths          = 5;
@@ -401,14 +401,14 @@ __kernel void render(
     // noise = (.5+half_exp(3-b*time))*frand((int)(1000*perlin2d(time+get_global_id(0)+montyC,time+get_global_id(1)-montyC,.01,2)));
     // noise = frand(noise);
 
-    // cam.P = (float3)(  3*sin(time+M_PI)+2.78,
-    //                    3*cos(time+M_PI)-8.00,
-    //                    2.73);
-    // cam.V = -(cam.P-(float3)(2.75));
-    // cam.V = normalize(camoffset(2.25*normalize(cam.V),-uv));
-    cam.P = (float3)(2.78,-8,2.78);
-    cam.V = (float3)(00,01,00);
-    cam.V = normalize(camoffset(2.8*normalize(cam.V),-uv));
+    cam.P = (float3)(  3*sin(time+M_PI)+2.78,
+                       3*cos(time+M_PI)-8.00,
+                       2.73);
+    cam.V = -(cam.P-(float3)(2.75));
+    cam.V = normalize(camoffset(2.25*normalize(cam.V),-uv));
+    // cam.P = (float3)(2.78,-8,2.78);
+    // cam.V = (float3)(00,01,00);
+    // cam.V = normalize(camoffset(2.8*normalize(cam.V),-uv));
 
     // cam.C = cam.V;
     cam.C = (float3)(1.);
@@ -524,10 +524,11 @@ __kernel void render(
     // read_imagef(dst_image,(int)(coord,0));
     write_imagef(dst_image, (int4)(coord,0,0),pixel0);
     write_imagef(dst_image, (int4)(coord,1,0),pixel1);
-    pixel0 = pixel0/pixel0.a;
+    pixel0 = pixelMC/max(1.,pixelMC.a);
+    // pixel0 = pixel0/pixel0.a;
     //post-processing
     // pixel0 = pow( pixel0, 0.40 );
-    pixel0 = (2.*pixel0)/(2.*pixel0+1.);
+    pixel0 = (1.*pixel0)/(1.*pixel0+1.);
     // pixel0 = pow( pixel0, 0.45 );    
     // pixel0 = pow( pixel0, 2 );
     pixel0 = pow( pixel0, 0.45 );//IQ

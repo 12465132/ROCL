@@ -168,14 +168,14 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             p2:[0.000,5.592,0.000],    
             p3:[0.000,5.592,5.488],  
             R:0.01,  
-            L:wall_l,
+            L:light_l,
         },//back wall
         myapp::triangle{
             p1:[5.496,5.592,0.000],
             p2:[0.000,5.592,5.488],    
             p3:[5.560,5.592,5.488],  
             R:0.01,  
-            L:wall_l,
+            L:light_l,
         },//back wall
         myapp::triangle{
             p1:[0.000,5.592,0.000],
@@ -352,7 +352,7 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
         let world = std::sync::Arc::new(std::sync::Mutex::new(myapp::MyApp::new(pixels,file_path,"default.jpg".to_string().clone(),xtotal,ytotal,3,triangles.len())));
         let c2 = std::sync::Arc::clone(&barrier);
         
-        world.lock().unwrap().loadtriangles(triangles);
+        world.lock().unwrap().loadtriangles(triangles.clone());
         let _render_thread = {
             let c1 = std::sync::Arc::clone(&barrier);
             let worldt = std::sync::Arc::clone(&world);
@@ -365,7 +365,7 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             loop {
                 c1.wait();
                 let mut worldlocked = worldt.lock().expect("failed lock");                    
-                worldlocked.render("render".to_string()).update();
+                worldlocked.loadtriangles(triangles.clone()).render("render".to_string()).update();
                 // worldlocked.dst_img1.cmd().copy(&worldlocked.dst_img1, [0, 0, 0]).enq().unwrap();
                 // worldlocked.framebuffer.cmd().copy(&worldlocked.src_img1, [0, 0, 0]).enq().unwrap();
                 // worldlocked.framebuffer.cmd().copy(&worldlocked.src_img2, [0, 0, 0]).enq().unwrap();
