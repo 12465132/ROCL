@@ -424,10 +424,10 @@ __kernel void render(
         2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+5)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+6)+get_global_id(0)))-1.));
     if (length(RandomV2)<=1){break;}
     }
-    RandomV2 = ((float3)(
-    2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+1)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+2)+get_global_id(0)))-1.,
-    2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+3)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+4)+get_global_id(0)))-1.,
-    2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+5)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+6)+get_global_id(0)))-1.));
+    // RandomV2 = ((float3)(
+    // 2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+1)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+2)+get_global_id(0)))-1.,
+    // 2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+3)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+4)+get_global_id(0)))-1.,
+    // 2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+5)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+6)+get_global_id(0)))-1.));
     
     // RandomV2 = fast_normalize(RandomV2);
         // spherical_to_cartesian((float3)(
@@ -445,8 +445,9 @@ __kernel void render(
     // (stepn+1)*
     // ((fast_length(lastN)<.5)?1:dot(normalize(intersect.intersectPoint-cam.P),normalize(lastN)))*
     // (stepn==0?1:dot((cam.V),(lastN)))*
-    // (hasHitLight*dot(normalize(cam.V),(stepn!=0?normalize(lastN):cam.V))+(1-hasHitLight))*
-    (hasHitLight*dot((cam.V),(stepn!=0?(lastN):cam.V))+(1-hasHitLight)*dot((cam.V),(stepn!=0?(N):cam.V)))*
+    (hasHitLight*dot((cam.V),(stepn!=0?(lastN):cam.V))+(1-hasHitLight))*
+    (hasHitLight*dot((cam.V),(stepn!=0?(lastN):cam.V))+(1-hasHitLight))*
+    // (hasHitLight*dot((cam.V),(stepn!=0?(N):cam.V))+(1-hasHitLight))*
     (read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz)
     // *dot(-normalize(intersect.intersectPoint-cam.P),N)
     ;
