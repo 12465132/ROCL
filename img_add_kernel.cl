@@ -445,7 +445,8 @@ __kernel void render(
     // (stepn+1)*
     // ((fast_length(lastN)<.5)?1:dot(normalize(intersect.intersectPoint-cam.P),normalize(lastN)))*
     // (stepn==0?1:dot((cam.V),(lastN)))*
-    (hasHitLight*dot(normalize(cam.V),(stepn!=0?normalize(lastN):cam.V))+(1-hasHitLight))*
+    // (hasHitLight*dot(normalize(cam.V),(stepn!=0?normalize(lastN):cam.V))+(1-hasHitLight))*
+    (hasHitLight*dot((cam.V),(stepn!=0?(lastN):cam.V))+(1-hasHitLight)*dot((cam.V),(stepn!=0?(N):cam.V)))*
     (read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz)
     // *dot(-normalize(intersect.intersectPoint-cam.P),N)
     ;
