@@ -202,20 +202,20 @@ impl MyApp {
             self.frameintg = 0;
             self
         }
-        // pub fn save(&mut self,S:String) -> &mut Self {
-        //     let xtotal ;
-        //     let ytotal ;
-        //     match self.pro_que.dims().clone() {
-        //         ocl::SpatialDims::Unspecified => return self,
-        //         ocl::SpatialDims::One(_) => return self,
-        //         ocl::SpatialDims::Two(xtot,ytot) => (xtotal,ytotal) = (xtot,ytot),
-        //         ocl::SpatialDims::Three(_, _,_) => return self,
-        //     }
-        //     let mut image: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = image::ImageBuffer::from_pixel((xtotal) as u32, (ytotal) as u32, image::Rgba([0,0,0,0_u8]));
-        //     self.dst_img1.read(&mut image).enq().unwrap();
-        //     image.save(&std::path::Path::new(&S)).unwrap();
-        //     self
-        // }
+        pub fn save(&mut self,S:String) -> &mut Self {
+            let xtotal ;
+            let ytotal ;
+            match self.pro_que.dims().clone() {
+                ocl::SpatialDims::Unspecified => return self,
+                ocl::SpatialDims::One(_) => return self,
+                ocl::SpatialDims::Two(xtot,ytot) => (xtotal,ytotal) = (xtot,ytot),
+                ocl::SpatialDims::Three(_, _,_) => return self,
+            }
+            let mut image: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = image::ImageBuffer::from_pixel((xtotal) as u32, (ytotal) as u32, image::Rgba([0,0,0,0_u8]));
+            self.framebuffer.read(&mut image).enq().unwrap();
+            image.save(&std::path::Path::new(&S)).unwrap();
+            self
+        }
         pub fn loadtriangles(&mut self,triangles:Vec<triangle>) -> &mut Self {
             if let ocl::SpatialDims::Two(_,maxtriangles) = self.triangles.dims(){
                 if triangles.len()>*maxtriangles {return self}

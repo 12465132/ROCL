@@ -7,7 +7,7 @@ __constant int SEED = 0;
 __constant float ERR =.000001;
 __constant int //performace <-> precision
     RenderDistance 		= 100,
-    Montycarlo 			= 10,
+    Montycarlo 			= 30,
     bouncecount 		= 10,
     randomattempts 		= 5,
     extrapaths          = 5;
@@ -444,12 +444,18 @@ __kernel void render(
     cam.C *= 
     // (stepn+1)*
     // ((fast_length(lastN)<.5)?1:dot(normalize(intersect.intersectPoint-cam.P),normalize(lastN)))*
-    // (stepn==0?1:dot((cam.V),(lastN)))*
-    (hasHitLight*dot((cam.V),(stepn!=0?(lastN):cam.V))+(1-hasHitLight))*
-    (hasHitLight*dot((cam.V),(stepn!=0?(lastN):cam.V))+(1-hasHitLight))*
+    // (!hasHitLight?1:dot((cam.V),(    N)))*
+    // (!hasHitLight?1:dot((cam.V),(lastN)))*    
+    // (stepn==0?1:dot((cam.V),(    N)))*
+    // powr((stepn==0?1:dot((cam.V),(lastN))),2)*
+    pown((hasHitLight?stepn==0?1:dot(cam.V,lastN) :1),2)*
+    // (hasHitLight?stepn==0?1:dot(cam.V,lastN) :1)*
+    // ((1-dot((-cam.V),(stepn!=0?(N    ):cam.V))))*
+    // ((1-dot((cam.V),(stepn!=0?(lastN):cam.V))))*
     // (hasHitLight*dot((cam.V),(stepn!=0?(N):cam.V))+(1-hasHitLight))*
     (read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz)
     // *dot(-normalize(intersect.intersectPoint-cam.P),N)
+    // *(stepn==0?1:(float)min(1.,native_recip(powr(.1*distance(cam.P,intersect.intersectPoint),2))))
     ;
     if(3.>read_imagef(triangles,sampler_host,(float2)(3.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).z){break;}
     // N = genNormal(sampler_host,intersect,cam,triangles);

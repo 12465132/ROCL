@@ -369,7 +369,7 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 // worldlocked.dst_img1.cmd().copy(&worldlocked.dst_img1, [0, 0, 0]).enq().unwrap();
                 // worldlocked.framebuffer.cmd().copy(&worldlocked.src_img1, [0, 0, 0]).enq().unwrap();
                 // worldlocked.framebuffer.cmd().copy(&worldlocked.src_img2, [0, 0, 0]).enq().unwrap();
-                // if(worldlocked.frameintg>=512){
+                // if(worldlocked.frameintg>=256){
                 //     worldlocked.save("ROCL2.PNG".to_string());
                 //     todo!();
                 // }
