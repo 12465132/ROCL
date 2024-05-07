@@ -168,14 +168,14 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             p2:[0.000,5.592,0.000],    
             p3:[0.000,5.592,5.488],  
             R:0.01,  
-            L:light_l,
+            L:wall_l,
         },//back wall
         myapp::triangle{
             p1:[5.496,5.592,0.000],
             p2:[0.000,5.592,5.488],    
             p3:[5.560,5.592,5.488],  
             R:0.01,  
-            L:light_l,
+            L:wall_l,
         },//back wall
         myapp::triangle{
             p1:[0.000,5.592,0.000],
@@ -363,9 +363,15 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 // worldt.lock().unwrap().src_img1.write(&image::io::Reader::open(image.clone()).unwrap().decode().unwrap().to_rgba8()).enq().unwrap();
 
             loop {
-                c1.wait();
+                // c1.wait();
+            {
                 let mut worldlocked = worldt.lock().expect("failed lock");                    
-                worldlocked.loadtriangles(triangles.clone()).render("render".to_string()).update();
+                worldlocked
+                .loadtriangles(triangles.clone())
+                .render("render".to_string())
+                .update()
+                // .checkstop(66, "pathTracingProgress/Cornell40.PNG".to_string())
+                ;
                 // worldlocked.dst_img1.cmd().copy(&worldlocked.dst_img1, [0, 0, 0]).enq().unwrap();
                 // worldlocked.framebuffer.cmd().copy(&worldlocked.src_img1, [0, 0, 0]).enq().unwrap();
                 // worldlocked.framebuffer.cmd().copy(&worldlocked.src_img2, [0, 0, 0]).enq().unwrap();
@@ -373,7 +379,7 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 //     worldlocked.save("ROCL2.PNG".to_string());
                 //     todo!();
                 // }
-                
+            }
                 c1.wait();
                 // worldlocked
             }
@@ -389,12 +395,14 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 // window.pre_present_notify();
                 frames+=1;
                 c2.wait();
+                {
                 if let Err(err) = world.lock().expect("failed lock").pixels.render() {
                     println!("{err}");
                     control_flow.exit();
                     return;
                 }
-                c2.wait();
+                }
+                // c2.wait();
 
             }
             // if let Event::UserEvent(val) = event {
@@ -426,8 +434,8 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 if let Some(size) = input.window_resized() {
                     world.lock().unwrap().pixels.resize_surface(size.width, size.height).unwrap();
                 }
-                window.request_redraw();
-                window.pre_present_notify();
+
+
                 // Update internal state and request a redraw
                 // world.update();
 
@@ -435,6 +443,14 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 // println!(" fps:{}",1./((now_save.elapsed().as_nanos() as f64)/1000000000.));
 
             }
+            // {
+            //     if let Ok(_) = world.try_lock()
+            //     {
+
+            //     }
+            // }
+            window.request_redraw();
+            window.pre_present_notify();
             println!("total frames:{frames}");
             println!("frames per second: {}",(frames as f64)/((now_total.elapsed().as_nanos() as f64)/1000000000.));
             println!("loops per second: {}",(loops as f64)/((now_total.elapsed().as_nanos() as f64)/1000000000.));

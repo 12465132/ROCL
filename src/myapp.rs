@@ -201,6 +201,13 @@ impl MyApp {
         pub fn reset(&mut self) -> &mut Self {
             self.frameintg = 0;
             self
+        }        
+        pub fn checkstop(&mut self,framestostop:i32,S:String) -> &mut Self {
+            if(self.frameintg==framestostop){
+            self.save(S);
+            todo!();
+            }
+            self
         }
         pub fn save(&mut self,S:String) -> &mut Self {
             let xtotal ;
