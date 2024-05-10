@@ -103,7 +103,7 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             myapp::L { 
                 color: [0.755,0.748,0.751],         
                 reflection: true, 
-                refraction: false, 
+                refraction: true, 
                 n: 1.5, 
                 roughness: 1.0, 
                 fresnel: 0., 
@@ -136,16 +136,16 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             L:wall_l,
         },//floor
         myapp::triangle{
-            p1:[3.430,2.270,5.48795],
-            p2:[3.430,3.320,5.48795],    
-            p3:[2.130,3.320,5.48795],  
+            p1:[3.430,2.270,5.480],
+            p2:[3.430,3.320,5.480],    
+            p3:[2.130,3.320,5.480],  
             R:0.01,  
             L:light_l,
         },//light
         myapp::triangle{
-            p1:[3.430,2.270,5.48795],
-            p2:[2.130,3.320,5.48795],    
-            p3:[2.130,2.270,5.48795],  
+            p1:[3.430,2.270,5.480],
+            p2:[2.130,3.320,5.480],    
+            p3:[2.130,2.270,5.480],  
             R:0.01,  
             L:light_l,
         },//light
@@ -349,7 +349,7 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
         let mut frames = 0;
         let mut loops = 0;
         let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
-        let world = std::sync::Arc::new(std::sync::Mutex::new(myapp::MyApp::new(pixels,file_path,"default.jpg".to_string().clone(),xtotal,ytotal,3,triangles.len())));
+        let world = std::sync::Arc::new(std::sync::Mutex::new(myapp::MyApp::new(pixels,xtotal,ytotal,8,triangles.len())));
         let c2 = std::sync::Arc::clone(&barrier);
         
         world.lock().unwrap().loadtriangles(triangles.clone());
@@ -407,7 +407,7 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
             }
             // if let Event::UserEvent(val) = event {
             //     // let mut a = pixels.frame_mut();
-            //     // a = world.draw().as_mut_slice();
+            //     //  = world.draw().as_mut_slice();
             //     c2.wait();
             //     world.lock().unwrap().draw(pixels.frame_mut());
             //     frames+=1;
@@ -424,12 +424,15 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 // Close events
                 if  input.key_pressed(winit::keyboard::KeyCode::Escape) ||
                 (input.key_held(winit::keyboard::KeyCode::ControlLeft) &&
-                 input.key_held(winit::keyboard::KeyCode::KeyC) )|| 
+                 input.key_pressed(winit::keyboard::KeyCode::KeyC) )|| 
                 input.close_requested() {
                     control_flow.exit();
                     return;
                 }
-    
+                if (input.key_held(winit::keyboard::KeyCode::ControlLeft) &&
+                    input.key_pressed(winit::keyboard::KeyCode::KeyS) ){
+                        world.lock().expect("failed lock").save(image.clone());
+                }
                 // Resize the window
                 if let Some(size) = input.window_resized() {
                     world.lock().unwrap().pixels.resize_surface(size.width, size.height).unwrap();

@@ -42,18 +42,18 @@ pub struct MyApp {
 impl MyApp {
     pub fn new(
     pixels:pixels::Pixels,
-    file_path:std::path::PathBuf,
-    image_path:String,
     xtotal:usize,
     ytotal:usize,
     layers:usize,
     triangleslength:usize
     ) -> MyApp{
-        let mut src:String = 
-            Default::default();
-        File::open(&file_path).expect("file read not work").read_to_string(&mut src).unwrap();
+        let mut src:String = Default::default();
+        File::open(std::path::PathBuf::from("OpenCL/mathConstants.cl")).expect("mathConstants.cl read not work").read_to_string(&mut src).unwrap();
+        File::open(std::path::PathBuf::from("OpenCL/Structs.cl")      ).expect("mathConstants.cl read not work").read_to_string(&mut src).unwrap();
+        File::open(std::path::PathBuf::from("OpenCL/mathFunctions.cl")).expect("mathConstants.cl read not work").read_to_string(&mut src).unwrap();
+        File::open(std::path::PathBuf::from("OpenCL/render_kernel.cl")).expect("render_kernel.cl read not work").read_to_string(&mut src).unwrap();
         let image = 
-            image::io::Reader::open(image_path).unwrap()
+        image::io::Reader::open(std::path::PathBuf::from("images/default.jpg")).unwrap()
                 .decode().unwrap()
                 .to_rgba8();
         let dims = 
@@ -70,7 +70,7 @@ impl MyApp {
             )
             .prog_bldr(
                 ocl::builders::ProgramBuilder::new()
-                .src_file(file_path)
+                .source(src)
                 .cmplr_opt(
                     " -cl-std=CL3.0 -cl-single-precision-constant -cl-unsafe-math-optimizations -cl-fast-relaxed-math -cl-finite-math-only -cl-mad-enable -w"
                 )
@@ -78,42 +78,15 @@ impl MyApp {
             )
             .build()
             .unwrap();
-        // let src_img1: ocl::Image<f32> = 
-        //     ocl::builders::ImageBuilder::<f32>::new()
-        //     .channel_order(ocl::core::ImageChannelOrder::Rgba)
-        //     .channel_data_type(ocl::core::ImageChannelDataType::Float)
-        //     .image_type(ocl::enums::MemObjectType::Image2d)
-        //     .dims(pro_que.dims())
-        //     .flags(
-        //         ocl::flags::MEM_READ_WRITE
-        //     )
-        //     // .copy_host_slice(&image.into_raw()..as_mut().into())
-        //     .queue(pro_que.queue().clone())
-        //     .build()
-        //     .expect("214");
-        // let src_img2: ocl::Image<f32> = 
-        //     ocl::builders::ImageBuilder::<f32>::new()
-        //     .channel_order(ocl::core::ImageChannelOrder::Rgba)
-        //     .channel_data_type(ocl::core::ImageChannelDataType::Float)
-        //     .image_type(ocl::enums::MemObjectType::Image2d)
-        //     .dims(pro_que.dims())
-        //     .flags(
-        //         ocl::flags::MEM_READ_WRITE
-        //     )
-        //     // .copy_host_slice(&image)
-        //     .queue(pro_que.queue().clone())
-        //     .build()
-        //     .expect("214");
         let dst_img1: ocl::Image<f32> = 
             ocl::Image::<f32>::builder()
             .channel_order(ocl::core::ImageChannelOrder::Rgba)
             .channel_data_type(ocl::core::ImageChannelDataType::Float)
-            .image_type(ocl::enums::MemObjectType::Image2d)
+            .image_type(ocl::enums::MemObjectType::Image3d)
             .dims(ocl::SpatialDims::Three(xtotal, ytotal, layers))
             .flags(
                 ocl::flags::MEM_READ_WRITE
             )
-            // .copy_host_slice(&image)
             .queue(pro_que.queue().clone())
             .build()
             .expect("229");       
@@ -253,12 +226,13 @@ impl MyApp {
                 b[6*4*i+21]= triangle.L.color[1]; 
                 b[6*4*i+22]= triangle.L.color[2]; 
                 b[6*4*i+23]= 1.; 
-                match (triangle.L.reflection,triangle.L.refraction){    //h(4).z=conditional
-                    (false,false)=>b[6*4*i+14]=1., //(h(4).z=1) when ((reflection==false) &&(refraction==false))
-                    (false,true)=> b[6*4*i+14]=2., //(h(4).z=2) when ((reflection==false) &&(refraction==true ))
-                    (true,false)=> b[6*4*i+14]=3., //(h(4).z=3) when ((reflection==true ) &&(refraction==false))
-                    (true,true)=>  b[6*4*i+14]=4., //(h(4).z=4) when ((reflection==true ) &&(refraction==true ))
-                    _=>return self}                              //h(5).z=color.z
+                // match (triangle.L.reflection,triangle.L.refraction){    //h(4).z=conditional
+                //     (false,false)=>b[6*4*i+14]=1., //(h(4).z=1) when ((reflection==false) &&(refraction==false))
+                //     (false,true)=> b[6*4*i+14]=2., //(h(4).z=2) when ((reflection==false) &&(refraction==true ))
+                //     (true,false)=> b[6*4*i+14]=3., //(h(4).z=3) when ((reflection==true ) &&(refraction==false))
+                //     (true,true)=>  b[6*4*i+14]=4., //(h(4).z=4) when ((reflection==true ) &&(refraction==true ))
+                //     _=>return self}                              //h(5).z=color.z
+                b[6*4*i+14] = 2.*(triangle.L.reflection as i32 as f32)+1.*(triangle.L.refraction as i32 as f32);
             }
             self.triangles.write(b).enq().unwrap();
             self

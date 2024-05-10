@@ -22,7 +22,7 @@ struct Args {
     /// total pixels in image in the y direction
     #[arg(short='Y', long="ytotal", default_value_t = 1080)]
     ytotal:usize,
-    #[arg(short='k', long = "kernel_file_path", default_value = "img_add_kernel.cl")]
+    #[arg(short='k', long = "kernel_file_path", default_value = "render_kernel.cl")]
     kernel_path: std::path::PathBuf,
     #[arg(short='i', long = "image_file_path", default_value = "oclt2.jpg")]
     image_path: String,
