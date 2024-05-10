@@ -80,12 +80,23 @@ if(frameintg==0){
     // cam.P = (float3)(  3*sin(time+M_PI)+2.78,3*cos(time+M_PI)-8.00,2.73);
     // cam.V = -(cam.P-(float3)(2.75));
     // cam.V = normalize(camoffset(2.25*normalize(cam.V),-uv));
-
     cam.P = (float3)(2.78,-8,2.78);
     cam.V = (float3)(00,01,00);
-    cam.V = normalize(camoffset(2.8*normalize(cam.V),-uv+(float2)(2.*RandomV1.xy-1.)*(i+j)));
-
-    cam.C = cam.V;
+    float3 temp1 = (camoffset(
+        normalize(cam.V),
+        (float2)(
+            2.*hash21(RandomV1.x*10000.,RandomV1.y*10000.)-1.,
+            2.*hash21(RandomV1.y*10000.,RandomV1.z*10000.)-1.
+        )*(i+j)*1000.))-cam.V;;
+    cam.V = (camoffset(
+        2.8*normalize(cam.V),
+        -uv+(float2)(
+            2.*hash21(RandomV1.x*10000.,RandomV1.y*10000.)-1.,
+            2.*hash21(RandomV1.y*10000.,RandomV1.z*10000.)-1.
+        )*(i+j))/2.8);
+    float3 temp = cam.P+11.*cam.V;
+    cam.P += temp1;
+    cam.V = normalize(temp-cam.P);
     cam.C = (float3)(1.);
     lastN = cam.V;
     int stepn = 0;
@@ -114,6 +125,7 @@ if(frameintg==0){
     if(hasHitLight&&stepn==0)
     {cam.C = read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz;break;}
     float temp = 0;
+
     // for(randomn = 0;randomn<randomattempts;randomn++){
     RandomV1 = (float4)(
     (float)(xorshift32(RandomV1.w*4294967295.)/4294967295.),
@@ -140,12 +152,13 @@ if(frameintg==0){
     (float)(xorshift32(RandomV1.x*4294967295.)/4294967295.),
     (float)(xorshift32(RandomV1.y*4294967295.)/4294967295.),
     (float)(xorshift32(RandomV1.z*4294967295.)/4294967295.));
+    
     if(
         (max(cam.C.x,max(cam.C.y,cam.C.z))<hash21(RandomV1.x*10000.,RandomV1.y*10000.))
     ){
         cam.C=0;break;
     }
-    cam.C /= (max(cam.C.x,max(cam.C.y,cam.C.z)));
+    pixelMC.xyz /= (max(cam.C.x,max(cam.C.y,cam.C.z)));
     // if(3.>read_imagef(triangles,sampler_host,(float2)(3.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).z){break;}
     float booleanfloat = read_imagef(triangles,sampler_host,(float2)(3.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).z;
     bool b0 = (bool)((int)((booleanfloat)/  1)%2);
@@ -228,12 +241,13 @@ if(frameintg==0){
     pixel0 = pixel0/pixel0.a;
     // pixel0 = (float4)(numMiss/(Montycarlo*bouncecount),numMiss/(Montycarlo*bouncecount),numMiss/(Montycarlo*bouncecount),1);
     //post-processing
-    // pixel0 = pow( pixel0, 0.40 );
-    pixel0 = (1.*pixel0)/(1.*pixel0+1.);pixel0 = pow( pixel0, 0.45 );//IQ
-// RandomV2 = ((float3)(   ((float)xorshift32(234422.+(145341225.+(234422.*time))*(xorshift32(get_global_id(1)*get_global_size(0)+get_global_id(0))/4294967295.))/4294967295.),
-//                         ((float)xorshift32(654225.+(245341225.+(654225.*time))*(xorshift32(get_global_id(1)*get_global_size(0)+get_global_id(0))/4294967295.))/4294967295.),
-//                         ((float)xorshift32(897643.+(345341225.+(897643.*time))*(xorshift32(get_global_id(1)*get_global_size(0)+get_global_id(0))/4294967295.))/4294967295.)));
-// RandomV2 = (float3)((float)(xorshift32(RandomV2.z*4294967295.)/4294967295.),(float)(xorshift32(RandomV2.x*4294967295.)/4294967295.),(float)(xorshift32(RandomV2.y*4294967295.)/4294967295.));
+        // pixel0 = pow( pixel0, 0.40 );
+    pixel0 = (pixel0)/(pixel0+1.);pixel0 = pow( pixel0, 0.45 );//IQ
+    // pixel0 = (pixel0)/(luminance(pixel0.xyz)+1.);pixel0 = pow( pixel0, 0.45 );//IQ
+        // RandomV2 = ((float3)(   ((float)xorshift32(234422.+(145341225.+(234422.*time))*(xorshift32(get_global_id(1)*get_global_size(0)+get_global_id(0))/4294967295.))/4294967295.),
+        //                         ((float)xorshift32(654225.+(245341225.+(654225.*time))*(xorshift32(get_global_id(1)*get_global_size(0)+get_global_id(0))/4294967295.))/4294967295.),
+        //                         ((float)xorshift32(897643.+(345341225.+(897643.*time))*(xorshift32(get_global_id(1)*get_global_size(0)+get_global_id(0))/4294967295.))/4294967295.)));
+        // RandomV2 = (float3)((float)(xorshift32(RandomV2.z*4294967295.)/4294967295.),(float)(xorshift32(RandomV2.x*4294967295.)/4294967295.),(float)(xorshift32(RandomV2.y*4294967295.)/4294967295.));
     // pixel0 =(float4)(RandomV2,1.);
     write_imagef(framebuffer, coord,(float4)(pixel0.xyz,1.));
     }////    

@@ -137,6 +137,7 @@ impl MyApp {
 
             let xtotal ;
             let ytotal ;
+            
             match self.pro_que.dims().clone() {
                 ocl::SpatialDims::Unspecified => return self,
                 ocl::SpatialDims::One(_) => return self,
