@@ -105,7 +105,7 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 reflection: true, 
                 refraction: true, 
                 n: 2.0, 
-                roughness: 0.1, 
+                roughness: 0.75, 
                 fresnel: 1., 
                 density: 1.0 
             };
