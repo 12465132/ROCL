@@ -221,17 +221,11 @@ if(frameintg<2){
         //
         }else{ //outside object 
         //
-        // float dotRN = dot(N,normalize(cam.V));
-        // float n_ratio = (n_old/n_new);
-        // float sinT2 = n*n * (1.0 - dotRN * dotRN);
-        // float cosT = sqrt(1.0 - (n_old/n_new)*(n_old/n_new)*(1.0 - dot(N,normalize(cam.V))*dot(N,normalize(cam.V))));
-        //fresnel equations
         float r0 = (n_old-n_new)/(n_old+n_new);
-
         float frensel = r0*r0 +(1.-r0*r0)*pown(1.-dot(N,normalize(cam.V)),5);
         //
         // if(frensel<hash21(RandomV1.y*10000.,RandomV1.z*10000.)){//frensel effect dident happen
-        if(0<hash21(RandomV1.y*10000.,RandomV1.z*10000.)){//frensel effect dident happen
+        if(frensel>hash21(RandomV1.y*10000.,RandomV1.z*10000.)){//frensel effect dident happen
         //
         if(density_new<hash21(RandomV1.x*10000.,RandomV1.y*10000.)){//refract into object
         //   

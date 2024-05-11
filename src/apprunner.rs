@@ -94,20 +94,20 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 color: [0.755,0.748,0.751],         
                 reflection: true, 
                 refraction: true, 
-                n: 2., 
+                n: 1.5, 
                 roughness: 0.1, 
                 fresnel: 1., 
-                density: 0. 
+                density: 0.1
             };
         let t_cube_l = 
             myapp::L { 
                 color: [0.755,0.748,0.751],         
                 reflection: true, 
                 refraction: true, 
-                n: 1.75, 
-                roughness: 0.7, 
+                n: 2.0, 
+                roughness: 0.1, 
                 fresnel: 1., 
-                density: 0.5 
+                density: 1.0 
             };
         let wall_l = 
             myapp::L{
