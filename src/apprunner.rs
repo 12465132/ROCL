@@ -54,49 +54,49 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 color:[0.755,0.748,0.751],
                 reflection:true,
                 refraction:false,
-                n:0.,
+                n:1.,
                 roughness:1.0,
-                fresnel:0.,
-                density:0.,
+                fresnel:1.,
+                density:1.,
             };
         let green_l = 
             myapp::L{
                 color:[0.061,0.426,0.061],
                 reflection:true,
                 refraction:false,
-                n:0.,
+                n:1.,
                 roughness:1.0,
-                fresnel:0.,
-                density:0.,
+                fresnel:1.,
+                density:1.,
             };
         let red_l = 
             myapp::L{
                 color:[0.443,0.061,0.062],
                 reflection:true,
                 refraction:false,
-                n:0.,
+                n:1.,
                 roughness:1.0,
-                fresnel:0.,
-                density:0.,
+                fresnel:1.,
+                density:1.,
             };
         let light_l = 
             myapp::L { 
                 color: [18.,15.,8.], 
                 reflection: false, 
                 refraction: false, 
-                n: 0., 
+                n: 1., 
                 roughness: 1.0, 
-                fresnel: 0., 
-                density: 0. 
+                fresnel: 1., 
+                density: 1. 
             };
         let s_cube_l = 
             myapp::L { 
                 color: [0.755,0.748,0.751],         
                 reflection: true, 
-                refraction: false, 
+                refraction: true, 
                 n: 2., 
-                roughness: 1.0, 
-                fresnel: 0., 
+                roughness: 0.1, 
+                fresnel: 1., 
                 density: 0. 
             };
         let t_cube_l = 
@@ -104,20 +104,20 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 color: [0.755,0.748,0.751],         
                 reflection: true, 
                 refraction: true, 
-                n: 1.5, 
-                roughness: 1.0, 
-                fresnel: 0., 
-                density: 0. 
+                n: 1.75, 
+                roughness: 0.7, 
+                fresnel: 1., 
+                density: 0.5 
             };
         let wall_l = 
             myapp::L{
                 color:[0.755,0.748,0.751],
                 reflection:true,
                 refraction:false,
-                n:0.,
+                n:1.,
                 roughness:1.0,
-                fresnel:0.,
-                density:0.,
+                fresnel:1.,
+                density:1.,
             };
         let triangles = 
         vec![
@@ -369,7 +369,7 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                 worldlocked
                 .loadtriangles(triangles.clone())
                 .render("render".to_string())
-                .update()
+                .updateframe()
                 // .checkstop(66, "pathTracingProgress/Cornell40.PNG".to_string())
                 ;
                 // worldlocked.dst_img1.cmd().copy(&worldlocked.dst_img1, [0, 0, 0]).enq().unwrap();
@@ -429,13 +429,47 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
                     control_flow.exit();
                     return;
                 }
+                let mut worldlocked = world.lock().expect("failed lock");                    
                 if (input.key_held(winit::keyboard::KeyCode::ControlLeft) &&
-                    input.key_pressed(winit::keyboard::KeyCode::KeyS) ){
+                    input.key_pressed(winit::keyboard::KeyCode::KeyX) ){
                         world.lock().expect("failed lock").save(image.clone());
                 }
+                
+                if (input.key_pressed(winit::keyboard::KeyCode::KeyW)){
+                    worldlocked.updatecam([0.0,0.1,0.0], [0.0,0.0]).reset();
+                }
+                if (input.key_pressed(winit::keyboard::KeyCode::KeyS)){
+                    worldlocked.updatecam([0.0,-0.1,0.0], [0.0,0.0]).reset();
+                }
+                if (input.key_pressed(winit::keyboard::KeyCode::KeyA)){
+                    worldlocked.updatecam([-0.1,0.0,0.0], [0.0,0.0]).reset();
+                }
+                if (input.key_pressed(winit::keyboard::KeyCode::KeyD)){
+                    worldlocked.updatecam([0.1,0.0,0.0], [0.0,0.0]).reset();
+                }
+                if (input.key_pressed(winit::keyboard::KeyCode::KeyR)){
+                    worldlocked.updatecam([0.0,0.0,0.1], [0.0,0.0]).reset();
+                }
+                if (input.key_pressed(winit::keyboard::KeyCode::KeyF)){
+                    worldlocked.updatecam([0.0,0.0,-0.1], [0.0,0.0]).reset();
+                }
+
+                if (input.key_pressed(winit::keyboard::KeyCode::ArrowLeft)){
+                    worldlocked.updatecam([0.0,0.0,0.0], [-0.1, 0.0]).reset();
+                }
+                if (input.key_pressed(winit::keyboard::KeyCode::ArrowDown)){
+                    worldlocked.updatecam([0.0,0.0,0.0], [ 0.0,-0.1]).reset();
+                }
+                if (input.key_pressed(winit::keyboard::KeyCode::ArrowRight)){
+                    worldlocked.updatecam([0.0,0.0,0.0], [ 0.1, 0.0]).reset();
+                }
+                if (input.key_pressed(winit::keyboard::KeyCode::ArrowUp)){
+                    worldlocked.updatecam([0.0,0.0,0.0], [ 0.0, 0.1]).reset();
+                }
+
                 // Resize the window
                 if let Some(size) = input.window_resized() {
-                    world.lock().unwrap().pixels.resize_surface(size.width, size.height).unwrap();
+                    worldlocked.pixels.resize_surface(size.width, size.height).unwrap();
                 }
 
 

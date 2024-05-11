@@ -6,7 +6,7 @@
 __constant int //performace <-> precision
     RenderDistance 		= 100,
     Montycarlo 			= 1,
-    bouncecount 		= 9,
+    bouncecount 		= 20,
     randomattempts 		= 5,
     extrapaths          = 5;
 
@@ -30,7 +30,13 @@ __kernel void render(
     read_write image3d_t dst_image,
     write_only image2d_t framebuffer,
     int frameintg,
-    float time
+    float time,
+    float Pos_x,
+    float Pos_y,
+    float Pos_z,
+    float Vec_x,
+    float Vec_y,
+    float Vec_z
 ){
     int2 coord =       (int2)(  get_global_id(0),  get_global_id(1));
     float2 fcoord =  (float2)(  get_global_id(0),  get_global_id(1));
@@ -47,7 +53,7 @@ __kernel void render(
 
     float4 pixel0 = read_imagef(dst_image,(int4)(coord,0.,0.));//raw image
     float4 pixel1 = read_imagef(dst_image,(int4)(coord,1.,1.));//SD  image
-if(frameintg==0){
+if(frameintg<2){
     pixel0 = 0;
     pixel1 = 0;
 }
@@ -59,6 +65,9 @@ if(frameintg==0){
     float3 N = 0,lastN = 0,RandomV2 = 0,color = 0;
     float Fr = 0;
     float Fd = 1;    
+
+    float n_new = 1;
+    float n_old = 1;
     struct Camera cam;
     struct Data intersect;
     bool hasHitLight = false;
@@ -72,16 +81,28 @@ if(frameintg==0){
                             ((float)xorshift32(897643.+(34534122.+(8597643.*(time+3)))*(xorshift32(85345*get_global_id(1)*get_global_size(0)+12425*get_global_id(0))/4294967295.))/4294967295.),
                             ((float)xorshift32(234553.+(53234522.+(5523643.*(time+4)))*(xorshift32(34363*get_global_id(1)*get_global_size(0)+23457*get_global_id(0))/4294967295.))/4294967295.)));
     for(int montyC = 0;montyC < Montycarlo+badPath;montyC++){
+    float roughness_new = 1;
+    float roughness_old = 1;
+    float fresnel_new = 1;
+    float fresnel_old = 1;
+    float density_new = 1;
+    float density_old = 1;
+
+    bool isSpecularRefracted = false;
+    bool isSpecularReflected = false;
+    bool isDiffuseRefracted  = false;
+    bool isDiffuseReflected  = false;
+
     hasHitLight = false;
     intersect.isIntersect =false;
-    // noise = (.5+half_exp(3-b*time))*frand((int)(1000*perlin2d(time+get_global_id(0)+montyC,time+get_global_id(1)-montyC,.01,2)));
-    // noise = frand(noise);
 
-    // cam.P = (float3)(  3*sin(time+M_PI)+2.78,3*cos(time+M_PI)-8.00,2.73);
+    // cam.P = (float3)(  3*sin(frameintg*.5+M_PI)+2.78,3*cos(frameintg*.5+M_PI)-8.00,2.73);
     // cam.V = -(cam.P-(float3)(2.75));
     // cam.V = normalize(camoffset(2.25*normalize(cam.V),-uv));
-    cam.P = (float3)(2.78,-8,2.78);
-    cam.V = (float3)(00,01,00);
+    // cam.P = (float3)(2.78,-8,2.78);
+    // cam.V = (float3)(00,01,00);
+    cam.P = (float3)(Pos_x,Pos_y,Pos_z);
+    cam.V = (float3)(Vec_x,Vec_y,Vec_x);
     float3 temp1 = (camoffset(
         normalize(cam.V),
         (float2)(
@@ -94,9 +115,9 @@ if(frameintg==0){
             2.*hash21(RandomV1.x*10000.,RandomV1.y*10000.)-1.,
             2.*hash21(RandomV1.y*10000.,RandomV1.z*10000.)-1.
         )*(i+j))/2.8);
-    float3 temp = cam.P+11.*cam.V;
-    cam.P += temp1;
-    cam.V = normalize(temp-cam.P);
+    // float3 temp = cam.P+11.*cam.V;
+    // cam.P += temp1;
+    // cam.V = normalize(temp-cam.P);
     cam.C = (float3)(1.);
     lastN = cam.V;
     int stepn = 0;
@@ -104,27 +125,13 @@ if(frameintg==0){
     color = 0;
     intersect = GlobalIntersect(sampler_host,cam,triangles);
     if(!intersect.isIntersect){break;}
-    // intersect.isIntersect =false;
-
-    // RandomV2 = ((float3)(
-    // 2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+1)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+2)+get_global_id(0)))-1.,
-    // 2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+3)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+4)+get_global_id(0)))-1.,
-    // 2.*hash21( 100.*(100.*(cos(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+5)+get_global_id(1)),100.*(100.*(sin(time+1+stepn+(bouncecount+extrapaths)*montyC+cbrt(time))+1+6)+get_global_id(0)))-1.));
-    
-    // RandomV2 = fast_normalize(RandomV2);
-        // spherical_to_cartesian((float3)(
-        // 2.*M_1_PI*hash21( 1000.*(1000.*(cos(time*M_PI)+1+step+100)+get_global_id(1)),1000.*(1000.*(sin(time*M_PI)+1+step+200)+get_global_id(0)))-1.*M_1_PI,
-        // 2.*M_1_PI*hash21( 1000.*(1000.*(cos(time*M_PI)+1+step+300)+get_global_id(1)),1000.*(1000.*(sin(time*M_PI)+1+step+400)+get_global_id(0)))-1.*M_1_PI,
-        // 1.));;
-    // RandomV2 = 0;
     N = genNormal(sampler_host,intersect,cam,triangles);
-    // N = (0.<=dot(-N,cam.V))?N:-N;
+    N = (0.>dot(cam.V,N)?N:-N);
     color = read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz;
     if(sqrt(3.)<fast_length(color))
     {hasHitLight = true;}
     if(hasHitLight&&stepn==0)
     {cam.C = read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).xyz;break;}
-    float temp = 0;
 
     // for(randomn = 0;randomn<randomattempts;randomn++){
     RandomV1 = (float4)(
@@ -132,18 +139,38 @@ if(frameintg==0){
     (float)(xorshift32(RandomV1.x*4294967295.)/4294967295.),
     (float)(xorshift32(RandomV1.y*4294967295.)/4294967295.),
     (float)(xorshift32(RandomV1.z*4294967295.)/4294967295.));
-    // temp = BSDF(dot(cam.V,N),RandomV1.z,10.);
-    // if (RandomV1.y>temp){break;}
-    // }
+
+    float booleanfloat = read_imagef(triangles,sampler_host,(float2)(3.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).z;
+    bool b0 = (bool)((int)((booleanfloat)/  1)%2);
+    bool b1 = (bool)((int)((booleanfloat)/  2)%2);
+    bool b2 = (bool)((int)((booleanfloat)/  4)%2);
+    bool b3 = (bool)((int)((booleanfloat)/  8)%2);
+    bool b4 = (bool)((int)((booleanfloat)/ 16)%2);
+    bool b5 = (bool)((int)((booleanfloat)/ 32)%2);
+    bool b6 = (bool)((int)((booleanfloat)/ 64)%2);
+    bool b7 = (bool)((int)((booleanfloat)/128)%2);
+
+    roughness_old = roughness_new;
+    fresnel_old = fresnel_new;
+    density_old = density_new;
+    n_old = n_new;
+
+    roughness_new = clamp(read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).x,0.,1.);
+    fresnel_new = clamp(read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).y,0.,1.);
+    density_new = clamp(read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).z,0.,1.);
+    n_new = clamp(read_imagef(triangles,sampler_host,(float2)(3.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).y,0.,1.);
+    // ^ wrong need conditional fliping 
+    if(n_old == n_new){
+        n_new = 1.;
+    }
     RandomV2 = ((float3)(
     2.*hash21(RandomV1.x*10000.,RandomV1.y*10000.)-1.,
     2.*hash21(RandomV1.y*10000.,RandomV1.z*10000.)-1.,
     2.*hash21(RandomV1.z*10000.,RandomV1.w*10000.)-1.));
     
-    // RandomV2 = 2.*RandomV1.xyz-1.;
     cam.C *= 
-    (rootn(fabs(dot((cam.V),(lastN))),5))* //effectivly a BRDF
-    fabs(dot((normalize(cam.V)),    normalize(lastN)))* //cos Contribution
+    // (rootn(fabs(dot((cam.V),(lastN))),5))* //effectivly a BRDF
+    fabs(dot((normalize(cam.V)),normalize(lastN)))* //cos Contribution
     (Fr+color/M_PI) //Fr needs implementing
     /(1/(2.*M_PI)) //"correcting for effectively the BRDF"
     ;
@@ -154,68 +181,107 @@ if(frameintg==0){
     (float)(xorshift32(RandomV1.z*4294967295.)/4294967295.));
     
     if(
-        (max(cam.C.x,max(cam.C.y,cam.C.z))<hash21(RandomV1.x*10000.,RandomV1.y*10000.))
+        ((fast_length(cam.C.xyz))<hash21(RandomV1.x*10000.,RandomV1.y*10000.))
     ){
         cam.C=0;break;
     }
-    pixelMC.xyz /= (max(cam.C.x,max(cam.C.y,cam.C.z)));
-    // if(3.>read_imagef(triangles,sampler_host,(float2)(3.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).z){break;}
-    float booleanfloat = read_imagef(triangles,sampler_host,(float2)(3.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).z;
-    bool b0 = (bool)((int)((booleanfloat)/  1)%2);
-    bool b1 = (bool)((int)((booleanfloat)/  2)%2);
-    bool b2 = (bool)((int)((booleanfloat)/  4)%2);
-    bool b3 = (bool)((int)((booleanfloat)/  8)%2);
-    bool b4 = (bool)((int)((booleanfloat)/ 16)%2);
-    bool b5 = (bool)((int)((booleanfloat)/ 32)%2);
-    bool b6 = (bool)((int)((booleanfloat)/ 64)%2);
-    bool b7 = (bool)((int)((booleanfloat)/128)%2);
-    if(!b1){break;}
-    // N = genNormal(sampler_host,intersect,cam,triangles);
-    // N = (0.<=dot(-N,cam.V))?N:-N;
-    float reflectance = clamp(read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),((float)intersect.index-.5)/get_image_height(triangles))).x,0.,1.);
-    cam.V = RandomV2;//+(1-reflectance)*(reflect(N,normalize(cam.V)));
-    // cam.V = polar_along_reflect(normalize(cam.V),N,temp*M_PI,(.5-RandomV1.x)*M_PI*temp);
-    // float3 polar_along_reflect(float3 R, float3 N,float u,float v)
-    // +(dot(RandomV2,N)>0?RandomV2:-RandomV2)
-    // +.00001*(N)
-    // +(1.-reflectance)
-        // *(reflect(N,normalize(cam.V)));
-        // cam.V = (cam.V);
-    cam.V = (0.>dot(cam.V,N)?-cam.V:cam.V);
+    pixelMC.xyz /= (fast_length(cam.C.xyz));
+    if(hasHitLight){break;}
+    RandomV1 = (float4)(
+    (float)(xorshift32(RandomV1.w*4294967295.)/4294967295.),
+    (float)(xorshift32(RandomV1.x*4294967295.)/4294967295.),
+    (float)(xorshift32(RandomV1.y*4294967295.)/4294967295.),
+    (float)(xorshift32(RandomV1.z*4294967295.)/4294967295.));
+        if(n_old>n_new){//check if inside object thus total internal reflection possable
+        //
+        if(n_old*n_old*(1-dot(cam.V,N)*dot(cam.V,N))>1.){//total internal reflection n_old*n_old*(1-dot()*dot())>1.
+            //    
+            cam.V = (reflect(N,normalize(cam.V)));
+            cam.P = intersect.intersectPoint-.00001*(N);
+            cam.V = (0.>dot(cam.V,N)?-cam.V:cam.V);
+            //
+        }else{//must be refraction if not internal reflection and inside object 
+        //
+        if(roughness_new<hash21(RandomV1.y*10000.,RandomV1.z*10000.)){
+            //  
+            cam.V =  (n_old/n_new)*cam.V + ((n_old/n_new)*dot(N,normalize(cam.V)) - sqrt(1.0 - (n_old/n_new)*(n_old/n_new)*(1.0 - dot(N,normalize(cam.V))*dot(N,normalize(cam.V)))))*N;
+            // cam.V = (reflect(N,normalize(cam.V)));//refraction out of object specular
+            cam.P = intersect.intersectPoint-.00001*(N);
+            cam.V = (0.>dot(cam.V,N)?cam.V:-cam.V);
+            //
+        }else{
+            //  
+            cam.V = RandomV2;                       //refraction out of object diffuse           
+            cam.P = intersect.intersectPoint-.00001*(N);
+            cam.V = (0.>dot(cam.V,N)?cam.V:-cam.V);
+            //
+        }
+        //
+        }
+        //
+        }else{ //outside object 
+        //
+        // float dotRN = dot(N,normalize(cam.V));
+        // float n_ratio = (n_old/n_new);
+        // float sinT2 = n*n * (1.0 - dotRN * dotRN);
+        // float cosT = sqrt(1.0 - (n_old/n_new)*(n_old/n_new)*(1.0 - dot(N,normalize(cam.V))*dot(N,normalize(cam.V))));
+        //fresnel equations
+        float r0 = (n_old-n_new)/(n_old+n_new);
+
+        float frensel = r0*r0 +(1.-r0*r0)*pown(1.-dot(N,normalize(cam.V)),5);
+        //
+        // if(frensel<hash21(RandomV1.y*10000.,RandomV1.z*10000.)){//frensel effect dident happen
+        if(0<hash21(RandomV1.y*10000.,RandomV1.z*10000.)){//frensel effect dident happen
+        //
+        if(density_new<hash21(RandomV1.x*10000.,RandomV1.y*10000.)){//refract into object
+        //   
+        if(roughness_new<hash21(RandomV1.y*10000.,RandomV1.z*10000.)){
+            //
+            cam.V =  (n_old/n_new)*cam.V + ((n_old/n_new)*dot(N,normalize(cam.V)) - sqrt(1.0 - (n_old/n_new)*(n_old/n_new)*(1.0 - dot(N,normalize(cam.V))*dot(N,normalize(cam.V)))))*N;
+            // cam.V = (reflect(N,normalize(cam.V)));//refraction into object specular
+            cam.P = intersect.intersectPoint-.00001*(N);
+            cam.V = (0.>dot(cam.V,N)?cam.V:-cam.V);
+            //
+        }else{
+            //
+            cam.V = RandomV2;                     //refraction into object diffuse
+            cam.P = intersect.intersectPoint-.00001*(N);
+            cam.V = (0.>dot(cam.V,N)?cam.V:-cam.V);
+            //
+        }
+        //
+        }else{//refraction dident happen into object
+        //
+        if(roughness_new<hash21(RandomV1.y*10000.,RandomV1.z*10000.)){
+            //
+            cam.V = (reflect(N,normalize(cam.V)));//reflected specular of object
+            cam.P = intersect.intersectPoint+.00001*(N);
+            cam.V = (0.>dot(cam.V,N)?-cam.V:cam.V);
+            //
+        }else{
+            //
+            cam.V = RandomV2;                     //reflected diffuse of object
+            cam.P = intersect.intersectPoint+.00001*(N);
+            cam.V = (0.>dot(cam.V,N)?-cam.V:cam.V);
+            //
+        }
+        }
+        //
+        }else{//frensel effect did happen thus must be specular
+            //
+            cam.V = (reflect(N,normalize(cam.V)));//reflected specular of object
+            cam.P = intersect.intersectPoint+.00001*(N);
+            cam.V = (0.>dot(cam.V,N)?-cam.V:cam.V);
+            //
+        }
+        }
+    // cam.V = roughness_new*RandomV2+(1-roughness_new)*(reflect(N,normalize(cam.V)));
+    // cam.P = intersect.intersectPoint+.00001*(N);
+    // cam.V = (0.>dot(cam.V,N)?-cam.V:cam.V);
     cam.V = normalize(cam.V);
-    // cam.V = normalize(cam.V);
-    cam.P = intersect.intersectPoint+.00001*(N);
     lastN = N;
-    // cam.P += ;
-
     }
-    // cam.C *= 2*M_PI*M_PI;
-    // if((!intersect.isIntersect)&&bouncecount>stepn) 
-    // {cam.C=0;}else{cam.C=1;}
-    // if((intersect.isIntersect)) 
-    // {cam.C=0;}else{cam.C=1;}
-    // if(bouncecount>stepn) 
-    // {cam.C=0;}else{cam.C=1;}
-    // if(!hasHitObject) {numMiss++;cam.C = 0;}
     
-    // if(Montycarlo<(montyC+2)){
-    // pixelSD = (float4)((fabs(pixelM2.xyz/pixelM2.a-(pixelMC.xyz/pixelMC.a)*(pixelMC.xyz/pixelMC.a))),1.);
-    // }
-    // if(
-    //     // intersect.isIntersect&&
-    //     Montycarlo<(montyC+2)&&
-    //     badPath<extrapaths&&
-    //     pixelSD.x<fabs(pixelMC.x/pixelMC.a-cam.C.x)&&
-    //     pixelSD.y<fabs(pixelMC.y/pixelMC.a-cam.C.y)&&
-    //     pixelSD.z<fabs(pixelMC.z/pixelMC.a-cam.C.z)&&
-    //     1==1
-    // ) 
-    // {
-
-    //     // pixel2 = 1;
-    //     badPath++;
-    //     continue;
-    // }
     if(!hasHitLight&&stepn!=bouncecount) {
         numMiss++;
         cam.C = 0;
@@ -232,10 +298,8 @@ if(frameintg==0){
     pixel0 += pixelMC;
     pixel1 += pixelM2;
 
-    // read_imagef(dst_image,(int)(coord,0));
     write_imagef(dst_image, (int4)(coord,0,0),pixel0);
     write_imagef(dst_image, (int4)(coord,1,0),pixel1);
-    // write_imagef(dst_image, (int4)(coord,2,0),pixel2);
     
     // pixel0 = pixelMC/(pixelMC.a);
     pixel0 = pixel0/pixel0.a;
@@ -253,4 +317,3 @@ if(frameintg==0){
     }////    
 
 
-    

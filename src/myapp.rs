@@ -37,7 +37,9 @@ pub struct MyApp {
     // pub src_img2:ocl::Image<f32>,
     pub pixels:pixels::Pixels,
     pub raw_img:image::DynamicImage,
-    pub frameintg:i32
+    pub frameintg:i32,
+    pub CamPos:[f32;3],
+    pub CamVec:[f32;3]
 }
 impl MyApp {
     pub fn new(
@@ -127,7 +129,9 @@ impl MyApp {
             framebuffer: dst_img2, 
             raw_img: raw_image,
             pixels: pixels,
-            frameintg:0
+            frameintg:0,
+            CamPos:[2.78,-8.0,2.78],
+            CamVec:[0.0,1.0,0.0],            
         }
             
     }
@@ -153,7 +157,13 @@ impl MyApp {
                 .arg(&self.dst_img)
                 .arg(&self.framebuffer)
                 .arg(self.frameintg)    
-                .arg((self.time.elapsed().as_nanos() as f32)/1000000000.)             
+                .arg((self.time.elapsed().as_nanos() as f32)/1000000000.)
+                .arg(self.CamPos[0])
+                .arg(self.CamPos[1])
+                .arg(self.CamPos[2])
+                .arg(self.CamVec[0])
+                .arg(self.CamVec[1])                
+                .arg(self.CamVec[2])                             
                 .build().expect("263");
 
             unsafe { kernel.enq().expect("265"); }
@@ -161,15 +171,20 @@ impl MyApp {
             self
         }
         /// Update the `World` internal state; bounce the box around the screen.
-        pub fn update(&mut self) -> &mut Self {
+        pub fn updateframe(&mut self) -> &mut Self {
             self.framebuffer.read(&mut self.pixels.frame_mut()).enq().expect("267");
-            // // self.raw_img.to_rgba8().as_mut().iter_mut().zip(self.pixels.frame_mut()).map(|(A,B)|{B}).collect();
-            // for pixel in self.pixels.frame_mut().chunks_exact_mut(4) {
-            //     pixel[0] = 255;; // R
-            //     pixel[1] = 255;; // G
-            //     pixel[2] = 255;; // B
-            //     pixel[3] = 255;; // A
-            // }
+            self 
+        }
+        pub fn updatecam(&mut self,Pos:[f32;3],Vec:[f32;2]) -> &mut Self {
+            self.CamPos[0] += Pos[0];
+            self.CamPos[1] += Pos[1];
+            self.CamPos[2] += Pos[2];
+            if Vec[0]!=0.&& Vec[1]!=0.{
+                let temp = camoffset(self.CamVec, Vec);
+                self.CamVec[0] = temp[0];
+                self.CamVec[1] = temp[1];
+                self.CamVec[2] = temp[2];
+            }
             self 
         }
         pub fn reset(&mut self) -> &mut Self {
@@ -385,3 +400,22 @@ pub fn myapprender(
 //     return true; // this ray hits the triangle
 // #endif
 // }
+fn camoffset (v:[f32;3],o:[f32;2]) -> [f32;3] {
+    let mut t0: [f32; 3] = [-(v[1])*o[0],(v[0])*o[0],0.];
+    let mut t1: [f32; 3] = [-v[2]*v[0]*o[1],-v[2]*v[1]*o[1],(v[0]*v[0]*o[1]+v[1]*v[1]*o[1])];
+    let t0_n:f32 = (t0[0]*t0[0]+t0[1]*t0[1]+t0[2]*t0[2]).sqrt();
+    let t1_n:f32 = (t1[0]*t1[0]+t1[1]*t1[1]+t1[2]*t1[2]).sqrt();
+    t0 = [t0[0]/t0_n,t0[2]/t0_n,t0[2]/t0_n];
+    t1 = [t1[0]/t1_n,t1[2]/t1_n,t1[2]/t1_n];   
+    return [
+        v[0]+t0[0]+t1[0],
+        v[1]+t0[1]+t1[1],
+        v[2]+t0[2]+t1[2]
+    ] 
+}
+
+
+
+// (v)+
+// normalize([-(v[1])*o[0],(v[0])*o[0],0.])+
+// normalize([-v[2]*v[0]*o[1],-v[2]*v[1]*o[1],(v[0]*v[0]*o[1]+v[1]*v[1]*o[1])]);
