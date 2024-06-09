@@ -8,12 +8,13 @@ use clap::builder::Str;
 #[derive(Clone)]
 pub struct L {
 	pub color:[f32;3],	// diffuse color
-	pub reflection:bool,	// has reflection 
+	pub isLight:bool,	// has reflection 
 	pub refraction:bool,	// has refraction
 	pub n:f32,			// refraction index
 	pub roughness:f32,	// Cook-Torrance roughness
-	pub fresnel:f32,		// Cook-Torrance fresnel reflectance
-	pub density:f32,		// Cook-Torrance color density i.e. fraction of diffuse reflection
+	pub objectid:f32,		// Cook-Torrance fresnel reflectance
+	pub RorTp:f32,		// Cook-Torrance color RorTp i.e. fraction of diffuse reflection
+    pub isObjectBoundry:bool,
 }
 impl Copy for L {}
 
@@ -232,11 +233,12 @@ impl MyApp {
                 b[6*4*i+10]= triangle.p3[2];                          //h(4).x=radius
                 b[6*4*i+11]= 0.;
                 b[6*4*i+12]= triangle.R;                    //h(5).x=roughness
-                b[6*4*i+13]= triangle.L.n;                        //h(5).y=fresnel
+                b[6*4*i+13]= triangle.L.n;  
+                b[6*4*i+14] = 4.*(triangle.L.isObjectBoundry as i32 as f32)+2.*(triangle.L.isLight as i32 as f32)+1.*(triangle.L.refraction as i32 as f32);
                 b[6*4*i+15]= 0.;                           //h(5).x=color.x
                 b[6*4*i+16]= triangle.L.roughness;                           //h(5).y=color.y
-                b[6*4*i+17]= triangle.L.fresnel; 
-                b[6*4*i+18]= triangle.L.density; 
+                b[6*4*i+17]= triangle.L.objectid; 
+                b[6*4*i+18]= triangle.L.RorTp; 
                 b[6*4*i+19]= 0.; 
                 b[6*4*i+20]= triangle.L.color[0]; 
                 b[6*4*i+21]= triangle.L.color[1]; 
@@ -248,7 +250,6 @@ impl MyApp {
                 //     (true,false)=> b[6*4*i+14]=3., //(h(4).z=3) when ((reflection==true ) &&(refraction==false))
                 //     (true,true)=>  b[6*4*i+14]=4., //(h(4).z=4) when ((reflection==true ) &&(refraction==true ))
                 //     _=>return self}                              //h(5).z=color.z
-                b[6*4*i+14] = 2.*(triangle.L.reflection as i32 as f32)+1.*(triangle.L.refraction as i32 as f32);
             }
             self.triangles.write(b).enq().unwrap();
             self

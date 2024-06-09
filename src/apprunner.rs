@@ -52,72 +52,90 @@ pub(crate) fn pixels_ez_renderer(file_path:std::path::PathBuf,
         let _white_l = 
             myapp::L{
                 color:[0.755,0.748,0.751],
-                reflection:true,
+                isLight:false,
                 refraction:false,
+                isObjectBoundry:false,
                 n:1.,
                 roughness:1.0,
-                fresnel:1.,
-                density:1.,
+                objectid:1.,
+                RorTp:1.,
             };
         let green_l = 
             myapp::L{
                 color:[0.061,0.426,0.061],
-                reflection:true,
+                isLight:false,
                 refraction:false,
+                isObjectBoundry:false,
                 n:1.,
                 roughness:1.0,
-                fresnel:1.,
-                density:1.,
+                objectid:2.,
+                RorTp:1.,
             };
         let red_l = 
             myapp::L{
                 color:[0.443,0.061,0.062],
-                reflection:true,
+                isLight:false,
                 refraction:false,
+                isObjectBoundry:false,
                 n:1.,
                 roughness:1.0,
-                fresnel:1.,
-                density:1.,
+                objectid:3.,
+                RorTp:1.,
             };
         let light_l = 
             myapp::L { 
-                color: [18.,15.,8.], 
-                reflection: false, 
+                color: [17.,15.,13.], 
+                isLight: true, 
+                isObjectBoundry:false,
                 refraction: false, 
                 n: 1., 
                 roughness: 1.0, 
-                fresnel: 1., 
-                density: 1. 
+                objectid: 4., 
+                RorTp: 1. 
             };
         let s_cube_l = 
             myapp::L { 
                 color: [0.755,0.748,0.751],         
-                reflection: true, 
+                isLight: false, 
                 refraction: true, 
-                n: 1.5, 
+                isObjectBoundry:false,
+                n: 2.5, 
                 roughness: 0.1, 
-                fresnel: 1., 
-                density: 0.1
+                objectid: 5., 
+                RorTp: 0.1
             };
         let t_cube_l = 
             myapp::L { 
-                color: [0.755,0.748,0.751],         
-                reflection: true, 
+                color:  [0.755,0.748,0.751],         
+                isLight: false, 
                 refraction: true, 
-                n: 2.0, 
-                roughness: 0.75, 
-                fresnel: 1., 
-                density: 1.0 
+                isObjectBoundry:true,
+                n: 1.0, 
+                roughness: 0.0, 
+                objectid: 6., 
+                RorTp: 0.0 
             };
         let wall_l = 
             myapp::L{
                 color:[0.755,0.748,0.751],
-                reflection:true,
+                isLight:false,
                 refraction:false,
+                isObjectBoundry:false,
+                n:2.5,
+                roughness:1.0,
+                objectid:7.,
+                RorTp:1.,
+            };
+            let blue_l = 
+            myapp::L{
+                color:[0.061,0.061,0.426],
+                isLight:false,
+                refraction:false,
+                isObjectBoundry:false,
                 n:1.,
                 roughness:1.0,
-                fresnel:1.,
-                density:1.,
+                objectid:8.,
+                RorTp:1.,
             };
         let triangles = 
         vec![

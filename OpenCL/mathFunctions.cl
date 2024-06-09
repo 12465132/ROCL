@@ -93,24 +93,15 @@ inline float frand( int seed )
 inline float3 spherical_to_cartesian(float3 v){
     return (float3)(v.x*cos(v.y)*sin(v.z),v.x*sin(v.y)*sin(v.z),v.x*cos(v.z)) ;
     }
-//comments
-    // struct L {
-    // 	float3  color;		// diffuse color
-    // 	bool reflection;	// has reflection 
-    // 	bool refraction;	// has refraction
-    // 	float n;			// refraction index
-    // 	float roughness;	// Cook-Torrance roughness
-    // 	float fresnel;		// Cook-Torrance fresnel reflectance
-    // 	float density;		// Cook-Torrance color density i.e. fraction of diffuse reflection
-
-    // };
-    // struct triangle{
-    //     float3 p1;    
-    //     float3 p2;
-    //     float3 p3;
-    //     float R;
-    //     struct L L;    
-    // };
+inline float3 uv2DtoPolar3D(float2 uv){
+    return (float3)(uv.x,uv.y,sqrt(1-uv.x*uv.x-uv.y*uv.y));
+    }
+inline float3 uv2DtoPolar3DAlongAxis(float2 uv,float3 N,float3 R){
+    return (float3)(0.)
+    +uv.x*cross(R-dot(N,R)*N,N)
+    +uv.y*(R-dot(N,R)*N)
+    +sqrt(1-uv.x*uv.x+uv.y*uv.y)*N;
+}
 inline struct Data init(){
     struct Data OD;
     OD.intersectPoint = (float3)(100000000.);
@@ -128,6 +119,41 @@ inline struct RTI intersectT(float3 B){
     T.isIntersect = true;
     T.P = B;
     return T;
+    }
+inline struct L air(){
+    struct L Lighting;
+    Lighting.color = (float3)(1.);
+	Lighting.isLight = false;
+    Lighting.isRefractive = true;
+    Lighting.isThin = false;
+    Lighting.b3 = false;
+    Lighting.b4 = false;
+    Lighting.b5 = false;
+    Lighting.b6 = false;
+    Lighting.b7 = false;
+	Lighting.n = 1.;
+	Lighting.roughness = 0;
+	Lighting.oid = -1.;
+	Lighting.density = 1.;
+    return Lighting;
+    }
+inline struct L load(float index,sampler_t sampler_host,read_only image2d_t triangles ){
+    struct L temp;
+    float booleanfloat = read_imagef(triangles,sampler_host,(float2)(3.5/get_image_width(triangles),(index-.5)/get_image_height(triangles))).z;
+    temp.color         = read_imagef(triangles,sampler_host,(float2)(5.5/get_image_width(triangles),(index-.5)/get_image_height(triangles))).xyz;
+	temp.isRefractive  = (bool)((int)((booleanfloat)/  1)%2);
+    temp.isLight       = (bool)((int)((booleanfloat)/  2)%2);
+    temp.isThin        = (bool)((int)((booleanfloat)/  4)%2);
+    temp.b3            = (bool)((int)((booleanfloat)/  8)%2);
+    temp.b4            = (bool)((int)((booleanfloat)/ 16)%2);
+    temp.b5            = (bool)((int)((booleanfloat)/ 32)%2);
+    temp.b6            = (bool)((int)((booleanfloat)/ 64)%2);
+    temp.b7            = (bool)((int)((booleanfloat)/128)%2);
+	temp.n             = read_imagef(triangles,sampler_host,(float2)(3.5/get_image_width(triangles),(index-.5)/get_image_height(triangles))).y;
+	temp.roughness     = read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),(index-.5)/get_image_height(triangles))).x;
+	temp.oid           = read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),(index-.5)/get_image_height(triangles))).y;
+	temp.density       = read_imagef(triangles,sampler_host,(float2)(4.5/get_image_width(triangles),(index-.5)/get_image_height(triangles))).z;
+    return temp;
     }
 inline float udTriangle( float3 p, float3 p1, float3 p2, float3 p3, float R){
   float3 ba = p2 - p1; 
@@ -265,7 +291,6 @@ inline struct Data GlobalIntersect(sampler_t sampler_host, struct Camera cam, re
     // D.isIntersect = true;
     return D;
     }
-
 inline float3 genNormal(sampler_t sampler_host, struct Data D,struct Camera C, read_only image2d_t triangles){
     float3 N = cross(
         read_imagef(triangles,sampler_host,(float2)(0.5/get_image_width(triangles),((float)D.index-.5)/get_image_height(triangles))).xyz-
@@ -278,26 +303,29 @@ inline float3 genNormal(sampler_t sampler_host, struct Data D,struct Camera C, r
 inline float3 reflect(float3 N, float3 R){
     return R-2.*dot(N,R)*N;
     }
+inline float3 refract(float3 N, float3 R,float n1,float n2){
+    return 
+    +sqrt(1-n1*n1*(1-dot(N,R)*dot(N,R))/n2/n2)*N
+    +(n1)*(R-dot(N,R)*N)/n2;
+    }
 inline float3 camoffset (float3 v,float2 o){
     return 
         (v)+
         normalize((float3)(-(v.y),(v.x),0.))*o.x+
         normalize((float3)(-v.z*v.x,-v.z*v.y,v.x*v.x+v.y*v.y))*o.y;
-    }
-/* The state must be initialized to non-zero */
-inline uint xorshift32(uint state)
-{
+    }/* The state must be initialized to non-zero */
+inline uint xorshift32(uint state){
 	/* Algorithm "xor" from p. 4 of Marsaglia, "Xorshift RNGs" */
 	uint x = state;
 	x ^= x << 13;
 	x ^= x >> 17;
 	x ^= x << 5;
     return x;
-}
+    }
 inline float BSDF(float t,float A,float B){
     if(B == 0){return 1;}
     return powr((t-t*t)/(A*A*A*(1-t)*(1-t)+(1-A)*(1-A)*(1-A)*t*t),B);
-}// 0<t<1 0<a<1 0<=range<=1  A is be dot(R,N)
+    }// 0<t<1 0<a<1 0<=range<=1  A is be dot(R,N)
 inline float3 polar_along_reflect(float3 R, float3 N,float u,float v){
 float3 Pt = R-dot(R,N)*N;
 float3 Pl = dot(R,N)*N;
@@ -306,14 +334,11 @@ return
      Pt*(cos(u))/(sqrt(1-dot(R,N)*dot(R,N)))
     +Pl*(sin(u)*cos(v))/(dot(R,N))
     +Px*(sin(u)*sin(v))/(sqrt(1-dot(R,N)*dot(R,N)));
-}//||R||==1 ||N||==1
-float luminance(float3 v)
-{
+    }//||R||==1 ||N||==1
+float luminance(float3 v){
     return dot(v, (float3)(0.2126, 0.7152, 0.0722));
-}
-
-float3 change_luminance(float3 c_in, float l_out)
-{
+    }
+float3 change_luminance(float3 c_in, float l_out){
     float l_in = luminance(c_in);
     return c_in * (l_out / l_in);
 }
