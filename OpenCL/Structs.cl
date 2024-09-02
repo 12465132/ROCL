@@ -22,9 +22,22 @@ struct L {
             b7;     
 	float n;		        // refraction index
 	float roughness;        // difuse to speecular
-	float oid;		        // object id
+	uint oid;		        // object id
 	float density;          // fraction of reflectance to transmitince
     };
+    struct SMaterialInfo
+{
+    // Note: diffuse chance is 1.0f - (specularChance+refractionChance)
+    vec3  albedo;              // the color used for diffuse lighting
+    vec3  emissive;            // how much the surface glows
+    float specularChance;      // percentage chance of doing a specular reflection
+    float specularRoughness;   // how rough the specular reflections are
+    vec3  specularColor;       // the color tint of specular reflections
+    float IOR;                 // index of refraction. used by fresnel and refraction.
+    float refractionChance;    // percent chance of doing a refractive transmission
+    float refractionRoughness; // how rough the refractive transmissions are
+    vec3  refractionColor;     // absorption for beer's law    
+};
 struct triangle{
     float3 p1;    
     float3 p2;
